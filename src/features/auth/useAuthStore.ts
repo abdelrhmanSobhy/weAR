@@ -3,32 +3,36 @@ import { persist } from "zustand/middleware";
 
 export type UserRole = "retailer" | "customer" | "admin";
 
-export interface RetailerData {
-  companyName: string;
-  planName: string;
-  planPrice: string;
-  billingCycle: string;
+export interface RetailerProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber?: string | null;
+  brandName: string;
+  businessType: string;
+  has3DModels?: boolean;
+  avatarUrl?: string | null;
+  brandLogoUrl?: string | null;
+  accountStatus?: string;
+  isEmailVerified?: boolean;
+  subscriptionId?: string | null;
+  availableBalance?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export type AuthUser = {
-  id: string;
-  email: string;
-  name: string;
-  avatar?: string;
-  role: UserRole;
-  retailerData?: RetailerData;
-};
-
 type AuthState = {
-  user: AuthUser | null;
+  user: RetailerProfile | null;
   role: UserRole | null;
   isAuthenticated: boolean;
+  accessToken: string | null;
+  refreshToken: string | null;
 
   hasHydrated: boolean;
   setHasHydrated: (v: boolean) => void;
 
-  login: (payload: AuthUser) => void;
-  updateUser: (payload: Partial<AuthUser>) => void;
+  login: (profile: RetailerProfile, tokens: { accessToken: string; refreshToken: string }, role: UserRole) => void;
+  updateUser: (payload: Partial<RetailerProfile>) => void;
   logout: () => void;
 };
 
@@ -40,15 +44,19 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       role: null,
       isAuthenticated: false,
+      accessToken: null,
+      refreshToken: null,
 
       hasHydrated: false,
       setHasHydrated: (v) => set({ hasHydrated: v }),
 
-      login: (user) => {
+      login: (profile, tokens, role) => {
         set({
-          user,
-          role: user.role,
+          user: profile,
+          role: role,
           isAuthenticated: true,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
         });
       },
 
@@ -63,6 +71,8 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           role: null,
           isAuthenticated: false,
+          accessToken: null,
+          refreshToken: null,
         });
       },
     }),
@@ -73,6 +83,8 @@ export const useAuthStore = create<AuthState>()(
         user: s.user,
         role: s.role,
         isAuthenticated: s.isAuthenticated,
+        accessToken: s.accessToken,
+        refreshToken: s.refreshToken,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
@@ -81,6 +93,7 @@ export const useAuthStore = create<AuthState>()(
   ),
 );
 
+// selectors
 export const selectIsAuthenticated = (s: AuthState) => s.isAuthenticated;
 export const selectRole = (s: AuthState) => s.role;
 export const selectUser = (s: AuthState) => s.user;

@@ -1,5 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/features/auth/useAuthStore";
+import {
+  useStartTrial,
+  useSubmitSaasEnquiry,
+  useSubscriptionPlans,
+} from "@/features/retailer/queries/subscription.queries";
+import type { SubscriptionPlan } from "@/features/retailer/types/subscription";
 
 import basicImg from "@/assets/auth/pricing/basic.webp";
 import standardImg from "@/assets/auth/pricing/standard.webp";
@@ -9,15 +16,88 @@ import saasImg from "@/assets/auth/pricing/saas.webp";
 type BillingCycle = "Monthly" | "Yearly" | "SaaS";
 
 interface PricingPlan {
+  id?: string;
   name: string;
+  tier?: string;
   desc: string;
   price: string;
+  currency?: string;
   period: string;
+  billingCycle?: BillingCycle | string;
   img: string;
   popular?: boolean;
   isSaaS?: boolean;
   features: string[];
 }
+
+const getPlanImage = (planName: string, tier?: string) => {
+  const key = `${planName} ${tier || ""}`.toLowerCase();
+  if (key.includes("basic")) return basicImg;
+  if (key.includes("enterprise")) return enterpriseImg;
+  if (key.includes("saas") || key.includes("white")) return saasImg;
+  return standardImg;
+};
+
+const buildPlanFeatures = (plan: SubscriptionPlan) => {
+  const features = [
+    "Virtual Fitting Room with 3D Avatars",
+    "Full AI Style Recommendations",
+    "Product Catalog & Inventory Management",
+    "Retailer Analytics Dashboard",
+    "Return & Refund Management System",
+  ];
+
+  features.push(
+    plan.isUnlimited
+      ? "Unlimited active products"
+      : `Up to ${plan.maxActiveProducts.toLocaleString()} active products`,
+  );
+  features.push(
+    plan.isUnlimited
+      ? "Unlimited monthly virtual try-ons"
+      : `Up to ${plan.maxMonthlyTryOns.toLocaleString()} monthly virtual try-ons`,
+  );
+
+  if (plan.supportLevel) features.push(`${plan.supportLevel} support`);
+  if (plan.isWhiteLabel)
+    features.push("100% White-Label Platform - Your branding, your domain");
+  if (plan.includesMobileApps)
+    features.push(
+      "Custom Mobile Applications - iOS & Android apps under your name",
+    );
+  if (plan.includesSourceCode) features.push("Source Code Access");
+  if (plan.hasDedicatedTeam)
+    features.push("Dedicated Development Team for custom features");
+  if (plan.hasSla) features.push("Priority 24/7 Support with SLAs");
+
+  return features;
+};
+
+const mapApiPlans = (
+  plans: SubscriptionPlan[],
+  billing: BillingCycle,
+): PricingPlan[] =>
+  plans.map((plan) => ({
+    id: plan.id,
+    name: plan.name || plan.tier,
+    tier: plan.tier,
+    desc: plan.isWhiteLabel
+      ? "Solution for big organizations"
+      : plan.tier?.toLowerCase().includes("basic")
+        ? "A simple start for everyone"
+        : plan.tier?.toLowerCase().includes("standard")
+          ? "For small to medium businesses"
+          : "Solution for big organizations",
+    price: String(plan.priceAmount),
+    currency: plan.currency || "$",
+    billingCycle: plan.billingCycle || billing,
+    period:
+      billing === "Monthly" ? "month" : billing === "Yearly" ? "Year" : "",
+    img: getPlanImage(plan.name, plan.tier),
+    popular: plan.tier?.toLowerCase().includes("standard"),
+    isSaaS: billing === "SaaS" || plan.isWhiteLabel,
+    features: buildPlanFeatures(plan),
+  }));
 
 const pricingData: Record<BillingCycle, PricingPlan[]> = {
   Monthly: [
@@ -197,7 +277,7 @@ const PricingCard = ({
   onSelect,
 }: {
   plan: PricingPlan;
-  onSelect: (name: string, price: string) => void;
+  onSelect: (plan: PricingPlan, action: "trial" | "select") => void;
 }) => {
   return (
     <div
@@ -283,14 +363,14 @@ const PricingCard = ({
 
         <div className="flex gap-4 shrink-0 pt-6 mt-2 justify-center">
           <button
-            onClick={() => onSelect(plan.name, plan.price)}
+            onClick={() => onSelect(plan, "trial")}
             className="cursor-pointer transition-all text-[#B6A092] hover:bg-[#C9A390] hover:text-white hover:border-[#C9A390]"
             style={buttonStyle}
           >
             START YOUR TRIAL
           </button>
           <button
-            onClick={() => onSelect(plan.name, plan.price)}
+            onClick={() => onSelect(plan, "select")}
             className="cursor-pointer transition-all text-[#B6A092] hover:bg-[#C9A390] hover:text-white hover:border-[#C9A390]"
             style={buttonStyle}
           >
@@ -306,15 +386,73 @@ export default function RetailerPricingPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [billing, setBilling] = useState<BillingCycle>("Monthly");
+  const [apiError, setApiError] = useState<string | null>(null);
+  const user = useAuthStore((state) => state.user);
+  const retailerId = user?.id || "";
+  const { data: plansResponse, isLoading } = useSubscriptionPlans(billing);
+  const { mutateAsync: startTrial, isPending: isStartingTrial } =
+    useStartTrial(retailerId);
+  const { mutateAsync: submitSaasEnquiry, isPending: isSubmittingSaas } =
+    useSubmitSaasEnquiry(retailerId);
 
   const signupData = location.state?.signupData || {};
-  const currentPlans = pricingData[billing];
+  const apiPlans = plansResponse?.data?.flatMap((group) => group.plans) || [];
+  const currentPlans = apiPlans.length
+    ? mapApiPlans(apiPlans, billing)
+    : pricingData[billing];
 
-  const handleSelectPlan = (planName: string, price: string) => {
-    const planData = { plan: planName, billing, price };
-    navigate("/signup/retailer/payment", {
-      state: { finalSignupData: { ...signupData, ...planData } },
-    });
+  const getErrorMessage = (error: unknown) => {
+    if (typeof error === "object" && error !== null && "response" in error) {
+      const response = (
+        error as {
+          response?: { data?: { message?: string; details?: string[] } };
+        }
+      ).response;
+      return response?.data?.message || response?.data?.details?.[0];
+    }
+    return error instanceof Error ? error.message : null;
+  };
+
+  const handleSelectPlan = async (
+    plan: PricingPlan,
+    action: "trial" | "select",
+  ) => {
+    setApiError(null);
+
+    try {
+      if (plan.isSaaS || billing === "SaaS") {
+        if (!retailerId)
+          throw new Error("Please log in before submitting a SaaS enquiry.");
+        await submitSaasEnquiry();
+        navigate("/retailer/pricing", { replace: true });
+        return;
+      }
+
+      if (action === "trial") {
+        if (!retailerId)
+          throw new Error("Please log in before starting a trial.");
+        await startTrial();
+        navigate("/retailer", { replace: true });
+        return;
+      }
+
+      const planData = {
+        plan: plan.name,
+        planId: plan.id,
+        billing: plan.billingCycle || billing,
+        price: plan.price,
+        currency: plan.currency,
+        img: plan.img,
+      };
+      navigate("/signup/retailer/payment", {
+        state: { finalSignupData: { ...signupData, ...planData } },
+      });
+    } catch (error) {
+      setApiError(
+        getErrorMessage(error) ||
+          "Subscription action failed. Please try again.",
+      );
+    }
   };
 
   return (
@@ -385,6 +523,22 @@ export default function RetailerPricingPage() {
         </div>
       </header>
 
+      {apiError && (
+        <p className="mb-4 text-center text-sm font-semibold text-red-500">
+          {apiError}
+        </p>
+      )}
+      {isLoading && (
+        <p className="mb-4 text-center text-sm text-[#949E96]">
+          Loading latest plans...
+        </p>
+      )}
+      {(isStartingTrial || isSubmittingSaas) && (
+        <p className="mb-4 text-center text-sm text-[#949E96]">
+          Processing subscription request...
+        </p>
+      )}
+
       {billing === "SaaS" ? (
         <div className="flex w-full max-w-[1250px] flex-1 min-h-0 items-stretch gap-6 xl:gap-8 justify-center pb-6">
           <div
@@ -401,7 +555,7 @@ export default function RetailerPricingPage() {
                     letterSpacing: "0.2px",
                   }}
                 >
-                  {pricingData.SaaS[0].name}
+                  {currentPlans[0]?.name || pricingData.SaaS[0].name}
                 </h3>
                 <p
                   className="mt-2"
@@ -412,7 +566,7 @@ export default function RetailerPricingPage() {
                     letterSpacing: "0.14px",
                   }}
                 >
-                  {pricingData.SaaS[0].desc}
+                  {currentPlans[0]?.desc || pricingData.SaaS[0].desc}
                 </p>
                 <div className="mt-4 flex items-start justify-center text-[#B6A092]">
                   <span className="text-[18px] mt-2 font-bold">$</span>
@@ -420,7 +574,7 @@ export default function RetailerPricingPage() {
                     className="text-[54px] leading-none mx-1"
                     style={{ fontFamily: '"PT Serif", serif' }}
                   >
-                    {pricingData.SaaS[0].price}
+                    {currentPlans[0]?.price || pricingData.SaaS[0].price}
                   </span>
                 </div>
               </div>
@@ -434,7 +588,9 @@ export default function RetailerPricingPage() {
                   letterSpacing: "0.14px",
                 }}
               >
-                {pricingData.SaaS[0].features.map((feature, i) => (
+                {(
+                  currentPlans[0]?.features || pricingData.SaaS[0].features
+                ).map((feature, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span className="text-[rgba(0,0,0,0.50)] text-[16px] leading-none mt-px">
                       •
@@ -446,12 +602,7 @@ export default function RetailerPricingPage() {
 
               <div className="flex shrink-0 pt-6 mt-2 justify-center">
                 <button
-                  onClick={() =>
-                    handleSelectPlan(
-                      pricingData.SaaS[0].name,
-                      pricingData.SaaS[0].price,
-                    )
-                  }
+                  onClick={() => handleSelectPlan(currentPlans[0], "select")}
                   className="cursor-pointer transition-all text-[#B6A092] hover:bg-[#C9A390] hover:text-white hover:border-[#C9A390] w-full max-w-[200px]"
                   style={buttonStyle}
                 >
@@ -474,7 +625,11 @@ export default function RetailerPricingPage() {
           className={`flex w-full max-w-[1450px] flex-1 min-h-0 items-center gap-6 xl:gap-8 justify-center`}
         >
           {currentPlans.map((plan, index) => (
-            <PricingCard key={index} plan={plan} onSelect={handleSelectPlan} />
+            <PricingCard
+              key={plan.id || index}
+              plan={plan}
+              onSelect={handleSelectPlan}
+            />
           ))}
         </div>
       )}

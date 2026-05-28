@@ -9,7 +9,16 @@ describe("RequireRole", () => {
   it("redirects when role mismatched", () => {
     // set authenticated but different role
     useAuthStore.setState({
-      user: { id: "1", email: "c@test.com", role: "customer" },
+      user: {
+        id: "1",
+        fullName: "Customer User",
+        email: "c@test.com",
+        brandName: "",
+        businessType: "",
+        has3DModels: false,
+        accountStatus: "active",
+        isEmailVerified: true,
+      },
       role: "customer",
       isAuthenticated: true,
       hasHydrated: true,
@@ -25,7 +34,7 @@ describe("RequireRole", () => {
             </RequireRole>
           ),
         },
-        { path: "/customer", element: <div>Customer Home</div> },
+        { path: "/customer/dashboard", element: <div>Customer Home</div> },
       ],
       { initialEntries: ["/retailer"] },
     );

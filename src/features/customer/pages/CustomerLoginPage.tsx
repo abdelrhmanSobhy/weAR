@@ -14,12 +14,23 @@ export function CustomerLoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    login({
-      id: "cust-1",
-      email: email || "customer@wear.com",
-      name: "Customer User",
-      role: "customer",
-    });
+    login(
+      {
+        id: "cust-1",
+        fullName: "Customer User",
+        email: email || "customer@wear.com",
+        brandName: "",
+        businessType: "",
+        has3DModels: false,
+        accountStatus: "active",
+        isEmailVerified: true,
+      },
+      {
+        accessToken: "customer-token",
+        refreshToken: "customer-refresh-token",
+      },
+      "customer",
+    );
     navigate("/customer/dashboard");
   };
 
@@ -49,7 +60,7 @@ export function CustomerLoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your Email"
-            className="h-[50px] w-full rounded-[12px] border border-[#E4DCD1] px-4 text-[14px] outline-none focus:border-[#C9A390] text-[#5C5550] placeholder:text-[#D3C1B6] bg-white transition-colors"
+            className="h-12.5 w-full rounded-2xl border border-[#E4DCD1] px-4 text-[14px] outline-none focus:border-[#C9A390] text-[#5C5550] placeholder:text-[#D3C1B6] bg-white transition-colors"
             required
           />
         </div>
@@ -62,7 +73,7 @@ export function CustomerLoginPage() {
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Enter your Password"
-              className="h-[50px] w-full rounded-[12px] border border-[#E4DCD1] px-4 pr-12 text-[14px] outline-none focus:border-[#C9A390] text-[#5C5550] placeholder:text-[#D3C1B6] bg-white transition-colors"
+              className="h-12.5 w-full rounded-2xl border border-[#E4DCD1] px-4 pr-12 text-[14px] outline-none focus:border-[#C9A390] text-[#5C5550] placeholder:text-[#D3C1B6] bg-white transition-colors"
               required
             />
             <button
@@ -84,7 +95,7 @@ export function CustomerLoginPage() {
         </div>
 
         <div className="flex items-center gap-2.5 mt-1">
-          <div className="relative flex items-center justify-center w-5 h-5 rounded-[4px] border border-[#C9A390] bg-[#C9A390] overflow-hidden cursor-pointer shadow-sm shadow-[#C9A390]/20">
+          <div className="relative flex items-center justify-center w-5 h-5 rounded-lg border border-[#C9A390] bg-[#C9A390] overflow-hidden cursor-pointer shadow-sm shadow-[#C9A390]/20">
             <input
               type="checkbox"
               className="absolute opacity-0 cursor-pointer w-full h-full"
@@ -111,22 +122,22 @@ export function CustomerLoginPage() {
 
         <button
           type="submit"
-          className="h-[50px] w-full rounded-[12px] bg-[#C9A390] text-white font-bold text-[15px] hover:opacity-95 transition-opacity mt-3 shadow-md shadow-[#C9A390]/20 tracking-wide"
+          className="h-12.5 w-full rounded-2xl bg-[#C9A390] text-white font-bold text-[15px] hover:opacity-95 transition-opacity mt-3 shadow-md shadow-[#C9A390]/20 tracking-wide"
         >
           Login
         </button>
 
         <div className="flex items-center gap-4 my-2">
-          <div className="h-[1px] flex-1 bg-[#E4DCD1]"></div>
+          <div className="h-px flex-1 bg-[#E4DCD1]"></div>
           <span className="text-[12px] text-[#B6A092] uppercase font-bold tracking-wider">
             OR
           </span>
-          <div className="h-[1px] flex-1 bg-[#E4DCD1]"></div>
+          <div className="h-px flex-1 bg-[#E4DCD1]"></div>
         </div>
 
         <button
           type="button"
-          className="h-[50px] w-full rounded-[12px] border border-[#E4DCD1] bg-white flex items-center justify-center gap-3 text-[#5C5550] font-bold text-[14px] hover:bg-gray-50 transition-colors shadow-sm"
+          className="h-12.5 w-full rounded-2xl border border-[#E4DCD1] bg-white flex items-center justify-center gap-3 text-[#5C5550] font-bold text-[14px] hover:bg-gray-50 transition-colors shadow-sm"
         >
           <img src={googleIcon} alt="Google" className="w-5 h-5" />
           Login with Google

@@ -1,95 +1,66 @@
-import type { Product, ProductInput } from "@/features/retailer/types/product";
+import { apiClient } from "@/lib/axios";
+import type {
+  ApiResponse,
+  Product,
+  GetProductsParams,
+  PaginatedResponse,
+} from "../types/product";
 
-const STORAGE_KEY = "wear-retailer-products";
+export const productsApi = {
+  getProducts: async (retailerId: string, params?: GetProductsParams) => {
+    const response = await apiClient.get<
+      ApiResponse<PaginatedResponse<Product>>
+    >(`/api/retailers/${retailerId}/products`, {
+      params: { pageNumber: 1, pageSize: 20, ...params },
+    });
+    return response.data;
+  },
 
-function read(): Product[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as Product[];
-  } catch {
-    return [];
-  }
-}
+  getProductById: async (retailerId: string, productId: string) => {
+    const response = await apiClient.get<ApiResponse<Product>>(
+      `/api/retailers/${retailerId}/products/${productId}`,
+    );
+    return response.data;
+  },
 
-function write(items: Product[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
+  createProduct: async (retailerId: string, data: FormData) => {
+    const response = await apiClient.post<ApiResponse<Product>>(
+      `/api/retailers/${retailerId}/products`,
+      data,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return response.data;
+  },
 
-function nowISO() {
-  return new Date().toISOString();
-}
-
-// seed once (optional)
-function ensureSeed() {
-  const items = read();
-  if (items.length > 0) return;
-  const seeded: Product[] = [
-    {
-      id: "p1",
-      name: "Basic T-Shirt",
-      price: 299,
-      createdAt: nowISO(),
-      updatedAt: nowISO(),
+  updateProduct: async (
+    retailerId: string,
+    productId: string,
+    data: {
+      newName?: string;
+      newDescription?: string;
+      shouldUpdateDescription?: boolean;
+      newPrice?: number;
+      shouldUpdatePrice?: boolean;
+      newBarcode?: string;
+      shouldUpdateBarcode?: boolean;
+      newCategoryId?: string;
+      shouldUpdateCategory?: boolean;
+      newSubCategoryId?: string;
+      newStatus?: string;
     },
-    {
-      id: "p2",
-      name: "Hoodie",
-      price: 799,
-      createdAt: nowISO(),
-      updatedAt: nowISO(),
-    },
-  ];
-  write(seeded);
-}
+  ) => {
+    // Note: The Swagger doc states PUT is application/json for metadata updates
+    const response = await apiClient.put<ApiResponse<Product>>(
+      `/api/retailers/${retailerId}/products/${productId}`,
+      data,
+    );
+    return response.data;
+  },
 
-export async function listProducts(): Promise<Product[]> {
-  // TODO(BE): Replace with GET /retailer/products
-  ensureSeed();
-  return read();
-}
-
-export async function getProduct(id: string): Promise<Product | null> {
-  // TODO(BE): Replace with GET /retailer/products/:id
-  ensureSeed();
-  return read().find((p) => p.id === id) ?? null;
-}
-
-export async function createProduct(input: ProductInput): Promise<Product> {
-  // TODO(BE): Replace with POST /retailer/products
-  ensureSeed();
-  const items = read();
-  const p: Product = {
-    id: crypto.randomUUID(),
-    name: input.name,
-    price: input.price,
-    createdAt: nowISO(),
-    updatedAt: nowISO(),
-  };
-  const next = [p, ...items];
-  write(next);
-  return p;
-}
-
-export async function updateProduct(
-  id: string,
-  input: ProductInput,
-): Promise<Product> {
-  // TODO(BE): Replace with PUT /retailer/products/:id
-  ensureSeed();
-  const items = read();
-  const idx = items.findIndex((p) => p.id === id);
-  if (idx === -1) throw new Error("Product not found");
-
-  const updated: Product = {
-    ...items[idx],
-    name: input.name,
-    price: input.price,
-    updatedAt: nowISO(),
-  };
-
-  const next = [...items];
-  next[idx] = updated;
-  write(next);
-  return updated;
-}
+  deleteProduct: async (retailerId: string, productId: string) => {
+    const response = await apiClient.delete(
+      `/api/retailers/${retailerId}/products/${productId}`,
+    );
+    return response.data;
+  },
+};

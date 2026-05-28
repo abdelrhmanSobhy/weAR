@@ -1,9 +1,13 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info, Check } from "lucide-react";
+
+import { useAuthStore } from "@/features/auth/useAuthStore";
+import { useAddPaymentMethod } from "@/features/retailer/queries/payment.queries";
+import { useSelectSubscriptionPlan } from "@/features/retailer/queries/subscription.queries";
 
 import logoImage from "@/assets/auth/logo.webp";
 import fallbackPlanImg from "@/assets/auth/pricing/standard.webp";
@@ -15,8 +19,6 @@ import applepaySvg from "@/assets/auth/payment/applepay.svg";
 import stripeSvg from "@/assets/auth/payment/stripe.svg";
 import gpaySvg from "@/assets/auth/payment/gpay.svg";
 import bitpaySvg from "@/assets/auth/payment/bitpay.svg";
-
-import { useAuthStore } from "@/features/auth/useAuthStore";
 
 const paymentSchema = z.object({
   cardName: z.string().min(3, "Cardholder name is required"),
@@ -35,9 +37,15 @@ type PaymentFormValues = z.infer<typeof paymentSchema>;
 export default function RetailerPaymentPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const user = useAuthStore((s) => s.user);
+  const retailerId = user?.id || "";
+  const { mutateAsync: addPaymentMethod } = useAddPaymentMethod(retailerId);
+  const { mutateAsync: selectSubscriptionPlan } =
+    useSelectSubscriptionPlan(retailerId);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  const login = useAuthStore((state) => state.login);
+  // user is already authenticated after signup step 2; no login call needed here
 
   const planData = location.state?.finalSignupData || {
     plan: "Standard",
@@ -80,23 +88,56 @@ export default function RetailerPaymentPage() {
 
   const onSubmit = async (values: PaymentFormValues) => {
     setIsProcessing(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    setApiError(null);
 
-    login({
-      id: "RET-" + Math.floor(Math.random() * 10000),
-      email: "admin@mybrand.com",
-      name: values.cardName,
-      role: "retailer",
-      retailerData: {
-        companyName: planData.businessName || "WeAR Brand",
-        planName: planData.plan,
-        planPrice: planData.price,
-        billingCycle: planData.billing,
-      },
-    });
+    try {
+      if (!retailerId)
+        throw new Error("User session not found. Please log in again.");
 
-    setIsProcessing(false);
-    navigate("/retailer", { replace: true });
+      const paymentMethodResponse = await addPaymentMethod({
+        providerType: "Credit Card", // Note: ideally detect provider from card number (Visa, MC, etc)
+        cardholderName: values.cardName,
+        cardNumberLast4: values.cardNumber.slice(-4),
+        expiryDate: values.expiryDate,
+        // Since Stripe Elements is not implemented yet in the UI, we send a test Stripe PaymentMethod ID:
+        stripePaymentMethodId: "pm_card_visa",
+        isSaved: values.saveDetails ?? false,
+        setAsDefault: true,
+      });
+
+      const paymentMethodId = paymentMethodResponse.data;
+      if (!planData.planId) {
+        throw new Error(
+          "Selected plan is missing an API plan id. Please choose the plan again.",
+        );
+      }
+
+      await selectSubscriptionPlan({
+        planId: planData.planId,
+        paymentMethodId,
+        billingCycle: planData.billing || "Monthly",
+      });
+
+      navigate("/retailer", { replace: true });
+    } catch (error: unknown) {
+      const apiMessage =
+        typeof error === "object" && error !== null && "response" in error
+          ? (
+              error as {
+                response?: { data?: { message?: string; details?: string[] } };
+              }
+            ).response?.data
+          : undefined;
+
+      setApiError(
+        apiMessage?.message ||
+          apiMessage?.details?.[0] ||
+          (error instanceof Error ? error.message : null) ||
+          "Payment failed. Please try again.",
+      );
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const labelStyle = {
@@ -165,6 +206,11 @@ export default function RetailerPaymentPage() {
             onSubmit={form.handleSubmit(onSubmit)}
             className="flex flex-col gap-2"
           >
+            {apiError && (
+              <div className="mb-3 rounded-[14px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                {apiError}
+              </div>
+            )}
             <div className="relative pb-5">
               <label className="mb-2 block" style={labelStyle}>
                 Cardholder Name

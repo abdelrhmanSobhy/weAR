@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuthStore } from "@/features/auth/useAuthStore";
 import {
   Edit2,
   Trash2,
@@ -7,73 +8,30 @@ import {
   X,
   Plus,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  useProducts,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+} from "../queries/products.queries";
+import { categoriesApi } from "../api/categories.api";
+import type { Product } from "../types/product";
 
-const poloImg =
-  "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=100";
-const jacketImg =
-  "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=100";
-const pantsImg =
-  "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=100";
-const shirtImg =
-  "https://images.unsplash.com/photo-1596755094514-f87e32f6b717?w=100";
-const tshirtImg =
-  "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100";
+interface ProductFormData {
+  name: string;
+  categoryId: string;
+  barcode: string;
+  price: number;
+  status: string;
+  imagePreview: string;
+  imageFile: File | null;
+}
 
-const baseProducts = [
-  {
-    name: "Polo Neck Sweatshirt",
-    category: "Tops & Shirts",
-    barcode: "080819822797",
-    price: "920 EGP",
-    status: "ACTIVE",
-    image: poloImg,
-  },
-  {
-    name: "Leather Jacket",
-    category: "Jacket",
-    barcode: "080819822797",
-    price: "1860 EGP",
-    status: "ACTIVE",
-    image: jacketImg,
-  },
-  {
-    name: "Pants",
-    category: "Bottoms & Pants",
-    barcode: "080819822797",
-    price: "680 EGP",
-    status: "ACTIVE",
-    image: pantsImg,
-  },
-  {
-    name: "Shirt",
-    category: "Tops & Shirts",
-    barcode: "080819822797",
-    price: "740 EGP",
-    status: "ACTIVE",
-    image: shirtImg,
-  },
-  {
-    name: "Polo T-shirt",
-    category: "Tops & Shirts",
-    barcode: "080819822797",
-    price: "890 EGP",
-    status: "ACTIVE",
-    image: tshirtImg,
-  },
-];
-
-const INITIAL_PRODUCTS = Array.from({ length: 12 }).map((_, i) => {
-  const base = baseProducts[i % 5];
-  return {
-    id: String(i + 1),
-    name: base.name,
-    category: base.category,
-    barcode: base.barcode,
-    price: base.price,
-    status: base.status,
-    image: base.image,
-  };
-});
+interface BackendCategory {
+  id: string;
+  name: string;
+}
 
 const BarcodeDisplay = ({ value }: { value: string }) => (
   <div className="flex flex-col items-center w-[90px]">
@@ -93,45 +51,99 @@ const BarcodeDisplay = ({ value }: { value: string }) => (
       <div className="w-[4px] bg-[#5C5550] h-full"></div>
     </div>
     <span className="text-[8px] text-[#5C5550] tracking-[0.2em] mt-1">
-      {value}
+      {value || "NO BARCODE"}
     </span>
   </div>
 );
 
 export function RetailerProductsListPage() {
+  const user = useAuthStore((state) => state.user);
+  const retailerId = user?.id || "5255b296-a907-40ae-8aba-48522d5a850a";
+
   const [activeTab, setActiveTab] = useState<"view" | "create">("view");
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
   const [deleteModal, setDeleteModal] = useState({
     isOpen: false,
     id: "",
     name: "",
   });
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = products.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(products.length / itemsPerPage);
+  const { data, isLoading, isError } = useProducts(retailerId, {
+    pageNumber: currentPage,
+    pageSize: 10,
+  });
 
-  const confirmDelete = () => {
-    setProducts(products.filter((p) => p.id !== deleteModal.id));
-    setDeleteModal({ isOpen: false, id: "", name: "" });
-  };
+  const deleteMutation = useDeleteProduct(retailerId);
+  const createMutation = useCreateProduct(retailerId);
+  const updateMutation = useUpdateProduct(retailerId);
 
-  const handleCreateOrUpdate = (newProduct: any) => {
-    if (editingProduct) {
-      setProducts(
-        products.map((p) => (p.id === editingProduct.id ? newProduct : p)),
-      );
-    } else {
-      setProducts([newProduct, ...products]);
+  const confirmDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync(deleteModal.id);
+      setDeleteModal({ isOpen: false, id: "", name: "" });
+    } catch {
+      alert("Failed to delete product.");
     }
-    setEditingProduct(null);
-    setActiveTab("view");
-    setCurrentPage(1);
   };
+
+  const handleCreateOrUpdate = async (formDataObj: ProductFormData) => {
+    try {
+      if (editingProduct) {
+        await updateMutation.mutateAsync({
+          productId: editingProduct.id,
+          data: {
+            newName: formDataObj.name,
+            newPrice: formDataObj.price,
+            shouldUpdatePrice: true,
+            newBarcode: formDataObj.barcode,
+            shouldUpdateBarcode: true,
+            newCategoryId: formDataObj.categoryId,
+            shouldUpdateCategory: true,
+            newStatus: formDataObj.status === "ACTIVE" ? "Active" : "Inactive",
+          },
+        });
+      } else {
+        if (!formDataObj.imageFile) {
+          alert("Please upload a product image.");
+          return;
+        }
+
+        const fd = new FormData();
+        fd.append("Name", formDataObj.name);
+        fd.append("Description", "Product Description");
+        fd.append("CategoryId", formDataObj.categoryId);
+        fd.append("Price", String(formDataObj.price));
+        fd.append("Currency", "EGP");
+        fd.append("Barcode", formDataObj.barcode);
+        fd.append("InitialQuantity", "0");
+        fd.append(
+          "Status",
+          formDataObj.status === "ACTIVE" ? "Active" : "Inactive",
+        );
+        fd.append("Images", formDataObj.imageFile);
+
+        await createMutation.mutateAsync(fd);
+      }
+
+      setEditingProduct(null);
+      setActiveTab("view");
+      setCurrentPage(1);
+    } catch (error: unknown) {
+      const err = error as {
+        response?: { data?: { details?: string[]; errors?: string[] } };
+      };
+      const backendErrors = err.response?.data?.details ||
+        err.response?.data?.errors || ["An unexpected error occurred."];
+      alert("Validation Error:\n\n" + backendErrors.join("\n"));
+    }
+  };
+
+  const products = data?.data?.items || [];
+  const totalPages = data?.data?.totalPages || 1;
+  const hasNextPage = data?.data?.hasNextPage || false;
+  const hasPreviousPage = data?.data?.hasPreviousPage || false;
 
   return (
     <div className="relative flex flex-col gap-6 font-sans w-full max-w-full">
@@ -145,18 +157,19 @@ export function RetailerProductsListPage() {
               Delete Product
             </h3>
             <p className="mt-2 text-[14px] text-[#949E96]">
-              Are you sure you want to delete the product <br />
+              Are you sure you want to delete <br />
               <span className="font-bold text-[#5C5550]">
                 "{deleteModal.name}"
               </span>
-              ? This action cannot be undone.
+              ?
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <button
                 onClick={confirmDelete}
-                className="flex-1 rounded-[12px] bg-[#F06161] py-3 font-bold text-white hover:bg-red-600 transition-colors"
+                disabled={deleteMutation.isPending}
+                className="flex-1 rounded-[12px] bg-[#F06161] py-3 font-bold text-white hover:bg-red-600 transition-colors disabled:opacity-50"
               >
-                Delete
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
               </button>
               <button
                 onClick={() =>
@@ -209,6 +222,17 @@ export function RetailerProductsListPage() {
             All Products
           </h2>
 
+          {isLoading && (
+            <p className="mb-4 text-[14px] text-[#949E96]">
+              Loading products...
+            </p>
+          )}
+          {isError && (
+            <p className="mb-4 rounded-[12px] bg-red-50 px-4 py-3 text-[13px] text-red-600">
+              Failed to load products.
+            </p>
+          )}
+
           <div className="w-full overflow-x-auto pb-4">
             <table className="w-full border-collapse min-w-[900px]">
               <thead>
@@ -222,65 +246,85 @@ export function RetailerProductsListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F0EDEB]">
-                {currentItems.map((product) => (
-                  <tr
-                    key={product.id}
-                    className="group hover:bg-[#FDFCFB] transition-colors border-b border-[#F0EDEB] last:border-none"
-                  >
-                    <td className="py-4 md:py-5 pl-2">
-                      <div className="flex items-center gap-3 md:gap-4">
-                        <img
-                          src={product.image}
-                          className="h-10 w-10 md:h-12 md:w-12 rounded-[10px] object-cover border border-[#E4DCD1] shrink-0"
-                        />
-                        <span className="text-[13px] md:text-[14px] font-bold text-[#5C5550] whitespace-nowrap">
-                          {product.name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-4 md:py-5 text-[12px] md:text-[13px] font-medium text-[#949E96] whitespace-nowrap">
-                      {product.category}
-                    </td>
-                    <td className="py-4 md:py-5">
-                      <BarcodeDisplay value={product.barcode} />
-                    </td>
-                    <td className="py-4 md:py-5">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 md:px-3 py-1 text-[9px] md:text-[10px] font-bold whitespace-nowrap ${product.status === "ACTIVE" ? "bg-[#E0F2E9] text-[#4CAF50]" : "bg-[#FFE4E4] text-[#F06161]"}`}
+                {products.length > 0
+                  ? products.map((product: Product) => (
+                      <tr
+                        key={product.id}
+                        className="group hover:bg-[#FDFCFB] transition-colors border-b border-[#F0EDEB] last:border-none"
                       >
-                        ● {product.status}
-                      </span>
-                    </td>
-                    <td className="py-4 md:py-5 text-[12px] md:text-[13px] font-bold text-[#949E96] whitespace-nowrap">
-                      {product.price}
-                    </td>
-                    <td className="py-4 md:py-5 text-center">
-                      <div className="flex justify-center gap-2 md:gap-3 text-[#BFC7DE]">
-                        <button
-                          onClick={() => {
-                            setEditingProduct(product);
-                            setActiveTab("create");
-                          }}
-                          className="hover:text-[#B6A092] transition-colors"
+                        <td className="py-4 md:py-5 pl-2">
+                          <div className="flex items-center gap-3 md:gap-4">
+                            {product.thumbnailUrl ? (
+                              <img
+                                src={product.thumbnailUrl}
+                                className="h-10 w-10 md:h-12 md:w-12 rounded-[10px] object-cover border border-[#E4DCD1] shrink-0"
+                                alt={product.name}
+                              />
+                            ) : (
+                              <div className="h-10 w-10 md:h-12 md:w-12 rounded-[10px] bg-gray-100 border border-[#E4DCD1] shrink-0 flex items-center justify-center text-xs text-gray-400">
+                                No Img
+                              </div>
+                            )}
+                            <span className="text-[13px] md:text-[14px] font-bold text-[#5C5550] whitespace-nowrap">
+                              {product.name}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 md:py-5">
+                          <div className="flex flex-col text-[12px] md:text-[13px] font-medium text-[#949E96] whitespace-nowrap">
+                            <span>{product.categoryName}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 md:py-5">
+                          <BarcodeDisplay value={product.barcode} />
+                        </td>
+                        <td className="py-4 md:py-5">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 md:px-3 py-1 text-[9px] md:text-[10px] font-bold whitespace-nowrap ${product.status === "Active" ? "bg-[#E0F2E9] text-[#4CAF50]" : "bg-[#FFE4E4] text-[#F06161]"}`}
+                          >
+                            ● {product.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="py-4 md:py-5 text-[12px] md:text-[13px] font-bold text-[#949E96] whitespace-nowrap">
+                          {product.price} {product.currency}
+                        </td>
+                        <td className="py-4 md:py-5 text-center">
+                          <div className="flex justify-center gap-2 md:gap-3 text-[#BFC7DE]">
+                            <button
+                              onClick={() => {
+                                setEditingProduct(product);
+                                setActiveTab("create");
+                              }}
+                              className="hover:text-[#B6A092] transition-colors"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                            <button
+                              onClick={() =>
+                                setDeleteModal({
+                                  isOpen: true,
+                                  id: product.id,
+                                  name: product.name,
+                                })
+                              }
+                              className="hover:text-[#F06161] transition-colors"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  : !isLoading && (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="py-12 text-center text-[#949E96]"
                         >
-                          <Edit2 size={16} md:size={18} />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setDeleteModal({
-                              isOpen: true,
-                              id: product.id,
-                              name: product.name,
-                            })
-                          }
-                          className="hover:text-[#F06161] transition-colors"
-                        >
-                          <Trash2 size={16} md:size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          No products found.
+                        </td>
+                      </tr>
+                    )}
               </tbody>
             </table>
           </div>
@@ -288,7 +332,7 @@ export function RetailerProductsListPage() {
           <div className="mt-8 flex items-center justify-between md:justify-end gap-2 overflow-x-auto">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
+              disabled={!hasPreviousPage}
               className="flex shrink-0 h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-[8px] border border-[#E4DCD1] text-[#949E96] hover:bg-gray-50 disabled:opacity-50 transition-opacity"
             >
               <ChevronLeft size={18} />
@@ -308,7 +352,7 @@ export function RetailerProductsListPage() {
             </div>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
+              disabled={!hasNextPage}
               className="flex shrink-0 h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-[8px] border border-[#E4DCD1] text-[#949E96] hover:bg-gray-50 disabled:opacity-50 transition-opacity"
             >
               <ChevronRight size={18} />
@@ -317,41 +361,81 @@ export function RetailerProductsListPage() {
         </div>
       ) : (
         <CreateProductForm
+          retailerId={retailerId}
           initialData={editingProduct}
           onSave={handleCreateOrUpdate}
-          onCancel={() => setActiveTab("view")}
+          onCancel={() => {
+            setActiveTab("view");
+            setEditingProduct(null);
+          }}
+          isPending={createMutation.isPending || updateMutation.isPending}
         />
       )}
     </div>
   );
 }
 
-function CreateProductForm({ initialData, onSave, onCancel }: any) {
-  const [formData, setFormData] = useState(
-    initialData || {
-      name: "",
-      category: "Tops & Shirts",
-      barcode: "080819822797",
-      price: "",
-      status: "ACTIVE",
-      image: "",
-    },
-  );
+function CreateProductForm({
+  retailerId,
+  initialData,
+  onSave,
+  onCancel,
+  isPending,
+}: {
+  retailerId: string;
+  initialData: Product | null;
+  onSave: (data: ProductFormData) => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) {
+  const [formData, setFormData] = useState<ProductFormData>({
+    name: initialData?.name || "",
+    categoryId: initialData?.categoryId || "",
+    barcode: initialData?.barcode || "",
+    price: initialData?.price || 0,
+    status: initialData?.status?.toUpperCase() || "ACTIVE",
+    imagePreview: initialData?.thumbnailUrl || "",
+    imageFile: null,
+  });
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories-lookup", retailerId],
+    queryFn: () =>
+      categoriesApi.getCategories(retailerId, { pageNumber: 1, pageSize: 50 }),
+    enabled: !!retailerId,
+  });
+
+  const categoriesList: BackendCategory[] = categoriesData?.data?.items || [];
 
   const inputStyle =
-    "h-[45px] md:h-[50px] w-full rounded-[10px] border border-[#E4DCD1] px-4 text-[13px] md:text-[14px] outline-none focus:border-[#C9A390]";
+    "h-[45px] md:h-[50px] w-full rounded-[10px] border border-[#E4DCD1] px-4 text-[13px] md:text-[14px] outline-none bg-white focus:border-[#C9A390]";
   const labelStyle =
     "mb-2 block text-[14px] md:text-[15px] font-medium text-[#949E96]";
 
-  const handleSubmit = (e: any) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      ...formData,
-      id: initialData?.id || Date.now().toString(),
-      price: formData.price.includes("EGP")
-        ? formData.price
-        : `${formData.price} EGP`,
-    });
+    if (!formData.categoryId) {
+      alert("Please select a Category.");
+      return;
+    }
+    onSave(formData);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const validTypes = ["image/jpeg", "image/png"];
+      if (!validTypes.includes(file.type)) {
+        alert("Please select a valid image format (JPEG or PNG only).");
+        e.target.value = "";
+        return;
+      }
+      setFormData({
+        ...formData,
+        imageFile: file,
+        imagePreview: URL.createObjectURL(file),
+      });
+    }
   };
 
   return (
@@ -380,15 +464,19 @@ function CreateProductForm({ initialData, onSave, onCancel }: any) {
         <div>
           <label className={labelStyle}>Category *</label>
           <select
-            value={formData.category}
+            value={formData.categoryId}
             onChange={(e) =>
-              setFormData({ ...formData, category: e.target.value })
+              setFormData({ ...formData, categoryId: e.target.value })
             }
             className={inputStyle}
+            required
           >
-            <option value="Tops & Shirts">Tops & Shirts</option>
-            <option value="Bottoms & Pants">Bottoms & Pants</option>
-            <option value="Jacket">Jacket</option>
+            <option value="">Select Category</option>
+            {categoriesList.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -407,65 +495,72 @@ function CreateProductForm({ initialData, onSave, onCancel }: any) {
           />
         </div>
         <div>
-          <label className={labelStyle}>Price *</label>
+          <label className={labelStyle}>Price (EGP) *</label>
           <input
-            type="text"
+            type="number"
+            min="0"
+            step="0.01"
             value={formData.price}
             onChange={(e) =>
-              setFormData({ ...formData, price: e.target.value })
+              setFormData({ ...formData, price: e.target.valueAsNumber })
             }
             className={inputStyle}
-            placeholder="e.g. 920"
             required
           />
         </div>
       </div>
 
-      <div>
-        <label className={labelStyle}>Product Image *</label>
-        <div className="rounded-[20px] border border-[#E4DCD1] p-4 md:p-6 bg-[#FEF9F2]/30">
-          <div className="flex gap-4">
-            {formData.image && (
-              <div className="relative h-20 w-20 md:h-24 md:w-24 shrink-0">
-                <img
-                  src={formData.image}
-                  className="h-full w-full rounded-[15px] object-cover border border-[#E4DCD1]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, image: "" })}
-                  className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#C9A390] text-white shadow-md"
-                >
-                  <X size={14} />
-                </button>
+      {!initialData && (
+        <div className="grid grid-cols-1 gap-5 md:gap-6">
+          <div>
+            <label className={labelStyle}>Product Image *</label>
+            <div className="rounded-[20px] border border-[#E4DCD1] p-4 md:p-6 bg-[#FEF9F2]/30">
+              <div className="flex gap-4">
+                {formData.imagePreview && (
+                  <div className="relative h-20 w-20 md:h-24 md:w-24 shrink-0">
+                    <img
+                      src={formData.imagePreview}
+                      className="h-full w-full rounded-[15px] object-cover border border-[#E4DCD1]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          imagePreview: "",
+                          imageFile: null,
+                        })
+                      }
+                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#C9A390] text-white shadow-md"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                <label className="flex h-20 w-20 md:h-24 md:w-24 shrink-0 cursor-pointer items-center justify-center rounded-[15px] border-2 border-dashed border-[#E4DCD1] text-[#E4DCD1] hover:bg-gray-50">
+                  <Plus size={32} />
+                  <input
+                    type="file"
+                    accept="image/jpeg, image/png"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
               </div>
-            )}
-            <label className="flex h-20 w-20 md:h-24 md:w-24 shrink-0 cursor-pointer items-center justify-center rounded-[15px] border-2 border-dashed border-[#E4DCD1] text-[#E4DCD1] hover:bg-gray-50">
-              <Plus size={32} />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  e.target.files?.[0] &&
-                  setFormData({
-                    ...formData,
-                    image: URL.createObjectURL(e.target.files[0]),
-                  })
-                }
-                className="hidden"
-              />
-            </label>
+              <p className="text-xs text-[#949E96] mt-2">
+                * Note: Modifying images after creation is managed via the
+                standalone Images API.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="flex flex-col items-start gap-2">
         <label className={labelStyle}>Status *</label>
         <select
           value={formData.status}
-          onChange={(e) =>
-            setFormData({ ...formData, status: e.target.value as any })
-          }
+          onChange={(e) => setFormData({ ...formData, status: e.target.value })}
           className={`${inputStyle} w-full md:w-auto md:min-w-[150px] font-bold ${formData.status === "ACTIVE" ? "bg-[#E0F2E9] text-[#4CAF50]" : "bg-[#FFE4E4] text-[#F06161]"}`}
         >
           <option value="ACTIVE">● ACTIVE</option>
@@ -483,9 +578,14 @@ function CreateProductForm({ initialData, onSave, onCancel }: any) {
         </button>
         <button
           type="submit"
-          className="h-[45px] md:h-[50px] w-full sm:w-auto px-10 md:px-12 rounded-[12px] bg-[#C9A390] text-white font-bold hover:opacity-90 order-1 sm:order-2"
+          disabled={isPending}
+          className="h-[45px] md:h-[50px] w-full sm:w-auto px-10 md:px-12 rounded-[12px] bg-[#C9A390] text-white font-bold hover:opacity-90 order-1 sm:order-2 disabled:opacity-50"
         >
-          {initialData ? "Update Product" : "Create Product"}
+          {isPending
+            ? "Saving..."
+            : initialData
+              ? "Update Product"
+              : "Create Product"}
         </button>
       </div>
     </form>

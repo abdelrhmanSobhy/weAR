@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useAuthStore } from "@/features/auth/useAuthStore";
 import { Download, Calendar, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,11 +18,25 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import {
+  useDashboardActivity,
+  useDashboardConversion,
+  useDashboardEngagement,
+  useDashboardKpis,
+  useDashboardProfit,
+  useDashboardReturnRate,
+  useDashboardReturnReasons,
+  useDashboardRevenue,
+  useDashboardSessions,
+  useDashboardSizeDistribution,
+  useExportDashboardCsv,
+} from "../queries/dashboard.queries";
+import type { DashboardGroupBy } from "../types/dashboard";
 
 // ==========================================
 // 📊 Mock Data (Matches Figma Exactly)
 // ==========================================
-const revenueData = [
+const fallbackRevenueData = [
   { month: "Jan", revenue: 40, expenses: 24 },
   { month: "Feb", revenue: 30, expenses: 13 },
   { month: "Mar", revenue: 50, expenses: 20 },
@@ -36,7 +51,7 @@ const revenueData = [
   { month: "Dec", revenue: 240.8, expenses: 144.6 },
 ];
 
-const profitData = [
+const fallbackProfitData = [
   { name: "1", val1: 40, val2: 24 },
   { name: "2", val1: 30, val2: 13 },
   { name: "3", val1: 20, val2: 50 },
@@ -48,7 +63,7 @@ const profitData = [
   { name: "9", val1: 54, val2: 65 },
 ];
 
-const sessionsData = [
+const fallbackSessionsData = [
   { day: "1", users: 20 },
   { day: "2", users: 35 },
   { day: "3", users: 25 },
@@ -58,7 +73,7 @@ const sessionsData = [
   { day: "7", users: 20 },
 ];
 
-const returnAnalysisData = [
+const fallbackReturnAnalysisData = [
   { name: "Fit", value: 45, color: "#A3B19B" },
   { name: "Style", value: 25, color: "#D6C5B3" },
   { name: "Quality", value: 15, color: "#E8D8CC" },
@@ -66,7 +81,7 @@ const returnAnalysisData = [
   { name: "Damaged", value: 5, color: "#DDDDDD" },
 ];
 
-const fitAccuracyData = [
+const fallbackFitAccuracyData = [
   { size: "XS", perfect: 55, needs: 40 },
   { size: "S", perfect: 65, needs: 80 },
   { size: "M", perfect: 78, needs: 15 },
@@ -74,7 +89,7 @@ const fitAccuracyData = [
   { size: "XL", perfect: 70, needs: 65 },
 ];
 
-const sizeDistributionData = [
+const fallbackSizeDistributionData = [
   { size: "XS", value: 20 },
   { size: "S", value: 45 },
   { size: "M", value: 78 },
@@ -82,7 +97,7 @@ const sizeDistributionData = [
   { size: "XL", value: 15 },
 ];
 
-const highestReturnData = [
+const fallbackHighestReturnData = [
   { name: "Leather", val1: 55, val2: 20 },
   { name: "Blazer", val1: 65, val2: 10 },
   { name: "Summer", val1: 78, val2: 5 },
@@ -91,7 +106,7 @@ const highestReturnData = [
   { name: "Cotton", val1: 35, val2: 40 },
 ];
 
-const conversionRateData = [
+const fallbackConversionRateData = [
   { day: "1", rate: 2 },
   { day: "5", rate: 4 },
   { day: "10", rate: 6 },
@@ -100,7 +115,7 @@ const conversionRateData = [
   { day: "25", rate: 3 },
 ];
 
-const triedOnData = [
+const fallbackTriedOnData = [
   { name: "Denim", try: 58, conv: 40 },
   { name: "Wide Leg", try: 70, conv: 50 },
   { name: "Silk", try: 38, conv: 80 },
@@ -113,8 +128,244 @@ const heatmapData = Array.from({ length: 4 }).map(() =>
 );
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 1,
+  notation: "compact",
+});
+
+const numberFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 1,
+  notation: "compact",
+});
+
+const plainNumberFormatter = new Intl.NumberFormat("en-US");
+
+const formatCurrencyCompact = (value?: number) =>
+  currencyFormatter.format(value ?? 0);
+
+const formatNumberCompact = (value?: number) =>
+  numberFormatter.format(value ?? 0);
+
+const toDateInputValue = (date: Date) => date.toISOString().slice(0, 10);
+
+const buildDefaultDateRange = () => {
+  const to = new Date();
+  const from = new Date(to);
+  from.setDate(from.getDate() - 30);
+
+  return {
+    from: toDateInputValue(from),
+    to: toDateInputValue(to),
+  };
+};
+
+const formatRelativeTime = (dateValue: string) => {
+  const createdAt = new Date(dateValue).getTime();
+
+  if (Number.isNaN(createdAt)) {
+    return "Just now";
+  }
+
+  const diffInMinutes = Math.max(
+    0,
+    Math.floor((Date.now() - createdAt) / 60_000),
+  );
+
+  if (diffInMinutes < 1) return "Just now";
+  if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hrs ago`;
+
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays} days ago`;
+};
+
+const downloadBlob = (blob: Blob, filename: string) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 export function RetailerDashboardPage() {
   const { user } = useAuthStore();
+  const retailerId = user?.id ?? "";
+  const displayName = user?.fullName || user?.brandName || "Mohamed";
+
+  const dateRange = useMemo(() => buildDefaultDateRange(), []);
+  const chartParams = useMemo(
+    () => ({ ...dateRange, groupBy: 2 as DashboardGroupBy }),
+    [dateRange],
+  );
+
+  const kpisQuery = useDashboardKpis(retailerId, dateRange);
+  const revenueQuery = useDashboardRevenue(retailerId, chartParams);
+  const profitQuery = useDashboardProfit(retailerId, chartParams);
+  const sessionsQuery = useDashboardSessions(retailerId, chartParams);
+  const activityQuery = useDashboardActivity(retailerId);
+  const returnReasonsQuery = useDashboardReturnReasons(retailerId, dateRange);
+  const sizeDistributionQuery = useDashboardSizeDistribution(
+    retailerId,
+    dateRange,
+  );
+  const returnRateQuery = useDashboardReturnRate(retailerId, dateRange);
+  const conversionQuery = useDashboardConversion(retailerId, dateRange);
+  const engagementQuery = useDashboardEngagement(retailerId, chartParams);
+  const exportDashboardCsv = useExportDashboardCsv(retailerId);
+
+  const kpis = kpisQuery.data?.data;
+  const conversion = conversionQuery.data?.data;
+
+  const revenueData = useMemo(() => {
+    const revenuePoints = revenueQuery.data?.data ?? [];
+    const profitPoints = profitQuery.data?.data ?? [];
+
+    if (!revenuePoints.length) return fallbackRevenueData;
+
+    return revenuePoints.map((point, index) => {
+      const profitValue = profitPoints[index]?.value ?? 0;
+      return {
+        month: point.label,
+        revenue: point.value,
+        expenses: Math.max(point.value - profitValue, 0),
+      };
+    });
+  }, [profitQuery.data?.data, revenueQuery.data?.data]);
+
+  const profitData = useMemo(() => {
+    const points = profitQuery.data?.data ?? [];
+
+    if (!points.length) return fallbackProfitData;
+
+    return points.map((point) => ({
+      name: point.label,
+      val1: point.value,
+      val2: 0,
+    }));
+  }, [profitQuery.data?.data]);
+
+  const sessionsData = useMemo(() => {
+    const points = sessionsQuery.data?.data ?? [];
+
+    if (!points.length) return fallbackSessionsData;
+
+    return points.map((point) => ({
+      day: point.label,
+      users: point.value,
+    }));
+  }, [sessionsQuery.data?.data]);
+
+  const activityData = useMemo(() => {
+    const events = activityQuery.data?.data ?? [];
+
+    if (!events.length) {
+      return [
+        {
+          t: "15 min ago",
+          desc: 'User tried "Winter Coat" + 3 Accessories',
+          bg: "bg-[#FDFCFB]",
+        },
+        {
+          t: "32 min ago",
+          desc: "Customer purchased after 5 virtual try-ons",
+          bg: "bg-white",
+        },
+        {
+          t: "47 min ago",
+          desc: "User tried on 2 items",
+          bg: "bg-[#FDFCFB]",
+        },
+        {
+          t: "12 hrs ago",
+          desc: "New collection saved 284 times",
+          bg: "bg-white",
+        },
+      ];
+    }
+
+    return events.slice(0, 4).map((event, index) => ({
+      t: formatRelativeTime(event.createdAt),
+      desc: event.eventData || event.eventType,
+      bg: index % 2 === 0 ? "bg-[#FDFCFB]" : "bg-white",
+    }));
+  }, [activityQuery.data?.data]);
+
+  const returnAnalysisData = useMemo(() => {
+    const colors = ["#A3B19B", "#D6C5B3", "#E8D8CC", "#8C7765", "#DDDDDD"];
+    const reasons = returnReasonsQuery.data?.data ?? [];
+
+    if (!reasons.length) return fallbackReturnAnalysisData;
+
+    return reasons.map((item, index) => ({
+      name: item.reason,
+      value: item.count,
+      color: colors[index % colors.length],
+    }));
+  }, [returnReasonsQuery.data?.data]);
+
+  const sizeDistributionData = useMemo(() => {
+    const sizes = sizeDistributionQuery.data?.data ?? [];
+
+    if (!sizes.length) return fallbackSizeDistributionData;
+
+    return sizes.map((item) => ({
+      size: item.size,
+      value: item.count,
+    }));
+  }, [sizeDistributionQuery.data?.data]);
+
+  const highestReturnData = useMemo(() => {
+    const products = returnRateQuery.data?.data ?? [];
+
+    if (!products.length) return fallbackHighestReturnData;
+
+    return products.slice(0, 6).map((product) => ({
+      name: product.productName,
+      val1: product.returnRatePercentage,
+      val2: Math.max(100 - product.returnRatePercentage, 0),
+    }));
+  }, [returnRateQuery.data?.data]);
+
+  const conversionRateData = useMemo(() => {
+    if (!conversion) return fallbackConversionRateData;
+
+    return [
+      {
+        day: "Now",
+        rate: conversion.conversionRatePercentage,
+      },
+    ];
+  }, [conversion]);
+
+  const triedOnData = useMemo(() => {
+    const points = engagementQuery.data?.data ?? [];
+
+    if (!points.length) return fallbackTriedOnData;
+
+    return points.slice(0, 4).map((point) => ({
+      name: point.label,
+      try: point.sessionCount,
+      conv: Math.round(point.avgDurationSeconds),
+    }));
+  }, [engagementQuery.data?.data]);
+
+  const handleExportDashboard = () => {
+    if (!retailerId || exportDashboardCsv.isPending) return;
+
+    exportDashboardCsv.mutate(dateRange, {
+      onSuccess: (blob) => {
+        downloadBlob(blob, `dashboard-${dateRange.from}-${dateRange.to}.csv`);
+      },
+    });
+  };
 
   return (
     <div className="flex flex-col gap-10 font-sans pb-10">
@@ -125,7 +376,7 @@ export function RetailerDashboardPage() {
             className="text-[32px] font-bold text-[#B6A092]"
             style={{ fontFamily: '"PT Serif", serif', lineHeight: 1.2 }}
           >
-            Welcome back, {user?.name?.split(" ")[0] || "Mohamed"}
+            Welcome back, {displayName.split(" ")[0] || "Mohamed"}
           </h1>
           <p className="text-[15px] text-[#949E96] mt-1">
             Here is what's happening with your store today.
@@ -135,6 +386,8 @@ export function RetailerDashboardPage() {
           <Button
             variant="outline"
             className="border-[#E4DCD1] text-[#B6A092] rounded-[10px] h-10"
+            onClick={handleExportDashboard}
+            disabled={exportDashboardCsv.isPending}
           >
             <Download className="mr-2 h-4 w-4" /> Export PDF
           </Button>
@@ -146,11 +399,36 @@ export function RetailerDashboardPage() {
 
       {/* ================= TOP KPIS ================= */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <TopKpiCard title="Total Sales" value="50.8K" badge="+12%" active />
-        <TopKpiCard title="Total Orders" value="23.6K" badge="+8%" active />
-        <TopKpiCard title="Active Views" value="756" badge="-2%" active />
-        <TopKpiCard title="Returns" value="294" badge="+1%" active />
-        <TopKpiCard title="Visitors" value="10,128" badge="+5%" active />
+        <TopKpiCard
+          title="Total Sales"
+          value={formatCurrencyCompact(kpis?.totalRevenue)}
+          badge="+12%"
+          active
+        />
+        <TopKpiCard
+          title="Total Orders"
+          value={formatNumberCompact(kpis?.totalOrders)}
+          badge="+8%"
+          active
+        />
+        <TopKpiCard
+          title="Active Views"
+          value={formatNumberCompact(kpis?.totalTryOns)}
+          badge="-2%"
+          active
+        />
+        <TopKpiCard
+          title="Returns"
+          value={formatNumberCompact(kpis?.totalReturns)}
+          badge="+1%"
+          active
+        />
+        <TopKpiCard
+          title="Visitors"
+          value={formatNumberCompact(conversion?.totalSessions)}
+          badge="+5%"
+          active
+        />
       </div>
 
       {/* ================= MAIN CHARTS ROW ================= */}
@@ -166,7 +444,7 @@ export function RetailerDashboardPage() {
                 className="text-[32px] font-bold text-[#B6A092]"
                 style={{ fontFamily: '"PT Serif", serif' }}
               >
-                $240.8K{" "}
+                {formatCurrencyCompact(kpis?.totalRevenue)}{" "}
                 <span className="text-[12px] text-green-500 font-sans ml-2 bg-green-50 px-2 py-1 rounded-full">
                   +12.5%
                 </span>
@@ -253,7 +531,7 @@ export function RetailerDashboardPage() {
               className="text-[24px] font-bold text-[#B6A092] mb-4"
               style={{ fontFamily: '"PT Serif", serif' }}
             >
-              $144.6K{" "}
+              {formatCurrencyCompact(kpis?.totalProfit)}{" "}
               <span className="text-[10px] text-green-500 font-sans bg-green-50 px-2 py-0.5 rounded-full">
                 +5.2%
               </span>
@@ -287,7 +565,8 @@ export function RetailerDashboardPage() {
               className="text-[24px] font-bold text-[#949E96] mb-4"
               style={{ fontFamily: '"PT Serif", serif' }}
             >
-              400 <span className="text-[12px] font-sans">/hour</span>
+              {formatNumberCompact(kpis?.totalTryOns)}{" "}
+              <span className="text-[12px] font-sans">/period</span>
             </p>
             <div className="h-[120px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -337,28 +616,7 @@ export function RetailerDashboardPage() {
               </Button>
             </div>
             <div className="flex flex-col gap-6">
-              {[
-                {
-                  t: "15 min ago",
-                  desc: 'User tried "Winter Coat" + 3 Accessories',
-                  bg: "bg-[#FDFCFB]",
-                },
-                {
-                  t: "32 min ago",
-                  desc: "Customer purchased after 5 virtual try-ons",
-                  bg: "bg-white",
-                },
-                {
-                  t: "47 min ago",
-                  desc: "User tried on 2 items",
-                  bg: "bg-[#FDFCFB]",
-                },
-                {
-                  t: "12 hrs ago",
-                  desc: "New collection saved 284 times",
-                  bg: "bg-white",
-                },
-              ].map((act, i) => (
+              {activityData.map((act, i) => (
                 <div
                   key={i}
                   className={`flex items-start gap-4 p-4 rounded-[12px] ${act.bg} border border-[#F0EDEB]`}
@@ -404,7 +662,7 @@ export function RetailerDashboardPage() {
                   className="text-[32px] font-bold text-[#949E96]"
                   style={{ fontFamily: '"PT Serif", serif' }}
                 >
-                  294
+                  {plainNumberFormatter.format(kpis?.totalReturns ?? 0)}
                 </span>
                 <span className="text-[12px] text-[#BFC7DE]">
                   Total Returns
@@ -443,7 +701,7 @@ export function RetailerDashboardPage() {
               </h3>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={fitAccuracyData}
+                  data={fallbackFitAccuracyData}
                   margin={{ left: -20, bottom: 0 }}
                 >
                   <CartesianGrid
@@ -683,7 +941,7 @@ export function RetailerDashboardPage() {
                   className="text-[32px] font-bold text-[#949E96]"
                   style={{ fontFamily: '"PT Serif", serif' }}
                 >
-                  1,347
+                  {plainNumberFormatter.format(kpis?.totalTryOns ?? 0)}
                 </p>
               </div>
               <Button variant="ghost" size="icon" className="text-[#949E96]">

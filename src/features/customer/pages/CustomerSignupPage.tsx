@@ -15,12 +15,20 @@ export function CustomerSignupPage() {
 
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
-    login({
-      id: "cust-1",
-      email: email || "customer@wear.com",
-      name: name || "New Customer",
-      role: "customer",
-    });
+    login(
+      {
+        id: "cust-1",
+        fullName: name || "New Customer",
+        email: email || "customer@wear.com",
+        brandName: "",
+        businessType: "",
+        has3DModels: false,
+        accountStatus: "active",
+        isEmailVerified: true,
+      },
+      { accessToken: "customer-token", refreshToken: "customer-refresh-token" },
+      "customer",
+    );
     navigate("/customer/dashboard");
   };
 

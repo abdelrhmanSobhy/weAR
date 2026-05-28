@@ -13,6 +13,8 @@ import RetailerSignupStep1Page from "@/features/auth/pages/RetailerSignupStep1Pa
 import RetailerSignupStep2Page from "@/features/auth/pages/RetailerSignupStep2Page";
 import RetailerPricingPage from "@/features/auth/pages/RetailerPricingPage";
 import RetailerPaymentPage from "@/features/auth/pages/RetailerPaymentPage";
+import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
+import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage";
 
 import { RequireAuth } from "../guards/RequireAuth";
 import { RequireRole } from "../guards/RequireRole";
@@ -50,6 +52,8 @@ const router = createBrowserRouter([
       { path: "/signup/retailer/step-2", element: <RetailerSignupStep2Page /> },
       { path: "/signup/retailer/pricing", element: <RetailerPricingPage /> },
       { path: "/signup/retailer/payment", element: <RetailerPaymentPage /> },
+      { path: "/forgot-password", element: <ForgotPasswordPage /> },
+      { path: "/reset-password", element: <ResetPasswordPage /> },
 
       { path: "/login/customer", element: <CustomerLoginPage /> },
       { path: "/signup/customer", element: <CustomerSignupPage /> },

@@ -1,15 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import {
-  Search,
-  Bell,
-  Menu,
-  ChevronDown,
-  PlusCircle,
-  LogOut,
-} from "lucide-react";
+import { Search, Menu, ChevronDown, PlusCircle, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/useAuthStore";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 interface RetailerTopNavProps {
   onOpenSidebar: () => void;
@@ -60,10 +54,7 @@ export function RetailerTopNav({ onOpenSidebar }: RetailerTopNavProps) {
       </div>
 
       <div className="flex items-center gap-6 ml-4">
-        <button className="relative flex items-center justify-center text-[#949E96] hover:text-[#B6A092] transition-colors">
-          <Bell size={24} strokeWidth={1.5} />
-          <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-[#E57A7A] border-2 border-white"></span>
-        </button>
+        <NotificationDropdown retailerId={user?.id || ""} />
 
         <div className="relative" ref={dropdownRef}>
           <button
@@ -71,22 +62,24 @@ export function RetailerTopNav({ onOpenSidebar }: RetailerTopNavProps) {
             className="flex items-center gap-3 p-1 pr-2 rounded-[10px] hover:bg-[#F5F1EF] transition-colors border border-transparent"
           >
             <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[#B6A092] text-white font-bold shadow-sm overflow-hidden">
-              {user?.avatar ? (
+              {user?.brandLogoUrl ? (
                 <img
-                  src={user.avatar}
+                  src={user.brandLogoUrl}
                   alt="Profile"
                   className="h-full w-full object-cover"
                 />
               ) : (
                 <span className="text-[15px]">
-                  {user?.name?.charAt(0).toUpperCase() || "M"}
+                  {(user?.fullName || user?.brandName || "M")
+                    .charAt(0)
+                    .toUpperCase()}
                 </span>
               )}
             </div>
 
             <div className="hidden md:flex items-center gap-2">
               <span className="text-[14px] font-bold text-[#949E96] font-sans">
-                {user?.name || "Mohamed Ahmed"}
+                {user?.fullName || user?.brandName || "Mohamed Ahmed"}
               </span>
               <ChevronDown
                 size={16}

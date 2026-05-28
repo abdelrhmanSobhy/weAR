@@ -1,63 +1,39 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuthStore } from "@/features/auth/useAuthStore";
 import { Search } from "lucide-react";
-
-const MOCK_ORDERS = [
-  {
-    id: "68ab0bebae",
-    customer: "Omar Mahmoud",
-    products: "Brown Polo T-shirt + Black\nClassic Pants",
-    date: "10/12/2025",
-    total: "2150",
-    status: "Not processed",
-    userType: "Registered",
-  },
-  {
-    id: "68a5bb18ae",
-    customer: "Abd Al-Rahman Ahmed",
-    products: "White Shirt",
-    date: "08/12/2025",
-    total: "740",
-    status: "Cancelled",
-    userType: "Guest",
-  },
-  {
-    id: "68a5bb03ae",
-    customer: "Anas Ahmed",
-    products: "Gray Classic Pants",
-    date: "08/12/2025",
-    total: "680",
-    status: "Processing",
-    userType: "Registered",
-  },
-  {
-    id: "68a5babbae",
-    customer: "Rayan Mohamed",
-    products: "Black Leather Jacket",
-    date: "06/12/2025",
-    total: "1860",
-    status: "Shipped",
-    userType: "Guest",
-  },
-  {
-    id: "68a5baa9ae",
-    customer: "Marwan Ahmed",
-    products: "Polo Neck Sweatshirt",
-    date: "04/12/2025",
-    total: "920",
-    status: "Delivered",
-    userType: "Registered",
-  },
-];
+import { useOrders, useUpdateOrderStatus } from "../queries/orders.queries";
+import { ordersApi } from "../api/orders.api";
+import type { Order } from "../types/order";
 
 export function RetailerOrdersPage() {
-  const [orders, setOrders] = useState(MOCK_ORDERS);
+  const user = useAuthStore((state) => state.user);
+  const retailerId = user?.id || "5255b296-a907-40ae-8aba-48522d5a850a";
+
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [userFilter, setUserFilter] = useState("All Users");
   const [sortOrder, setSortOrder] = useState("Newest First");
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const { data, isLoading, isError } = useOrders(retailerId, {
+    pageNumber: currentPage,
+    pageSize: 20,
+    searchTerm: debouncedSearch || undefined,
+  });
+
+  const statusMutation = useUpdateOrderStatus(retailerId);
+
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case "Not processed":
+      case "NotProcessed":
         return "bg-[#F5F5F5] text-[#5C5550]";
       case "Cancelled":
         return "bg-[#FFE4E4] text-[#F06161]";
@@ -72,75 +48,54 @@ export function RetailerOrdersPage() {
     }
   };
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    setOrders((prev) =>
-      prev.map((order) =>
-        order.id === id ? { ...order, status: newStatus } : order,
-      ),
-    );
+  const handleStatusChange = async (orderId: string, newStatus: string) => {
+    try {
+      await statusMutation.mutateAsync({ orderId, newStatus });
+    } catch {
+      alert(
+        "Failed to update order status. Please check valid status transitions.",
+      );
+    }
   };
 
-  const parseDate = (dateStr: string) => {
-    const [day, month, year] = dateStr.split("/");
-    return new Date(`${year}-${month}-${day}`).getTime();
+  const handleExportCSV = async () => {
+    try {
+      const blobData = await ordersApi.exportCsv(retailerId);
+      const url = window.URL.createObjectURL(new Blob([blobData]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "orders_export.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      alert("Failed to export CSV.");
+    }
   };
 
-  let processedOrders = orders.filter(
-    (order) =>
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.products.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  let processedOrders = data?.data?.items || [];
 
   if (userFilter !== "All Users") {
     const type = userFilter === "Registered Users" ? "Registered" : "Guest";
-    processedOrders = processedOrders.filter(
-      (order) => order.userType === type,
-    );
+    processedOrders = processedOrders.filter((order: Order) => {
+      const uType = order.customerId ? "Registered" : "Guest";
+      return uType === type;
+    });
   }
 
-  processedOrders.sort((a, b) => {
+  processedOrders = [...processedOrders].sort((a: Order, b: Order) => {
     if (sortOrder === "Highest Total") {
-      return parseInt(b.total) - parseInt(a.total);
+      return b.totalAmount - a.totalAmount;
     } else {
-      const dateA = parseDate(a.date);
-      const dateB = parseDate(b.date);
+      const dateA = new Date(a.orderDate).getTime();
+      const dateB = new Date(b.orderDate).getTime();
       return sortOrder === "Newest First" ? dateB - dateA : dateA - dateB;
     }
   });
 
-  const handleExportCSV = () => {
-    const headers = [
-      "Order ID",
-      "Customer Name",
-      "User Type",
-      "Products",
-      "Date",
-      "Total Amount",
-      "Status",
-    ];
-
-    const csvContent = [
-      headers.join(","),
-      ...processedOrders.map((order) => {
-        // Clean up the products string (remove newlines and commas to avoid breaking the CSV format)
-        const cleanProducts = order.products
-          .replace(/\n/g, " ")
-          .replace(/,/g, " ");
-        return `"${order.id}","${order.customer}","${order.userType}","${cleanProducts}","${order.date}",${order.total},"${order.status}"`;
-      }),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", "orders_export.csv");
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const totalPages = data?.data?.totalPages || 1;
+  const hasNextPage = data?.data?.hasNextPage || false;
+  const hasPreviousPage = data?.data?.hasPreviousPage || false;
 
   return (
     <div className="flex flex-col gap-6 font-sans w-full max-w-full">
@@ -160,6 +115,15 @@ export function RetailerOrdersPage() {
       </div>
 
       <div className="rounded-[24px] border border-[#E4DCD1] bg-white p-4 md:p-8 shadow-sm overflow-hidden w-full">
+        {isLoading && (
+          <p className="mb-4 text-[14px] text-[#949E96]">Loading orders...</p>
+        )}
+        {isError && (
+          <p className="mb-4 rounded-[12px] bg-red-50 px-4 py-3 text-[13px] text-red-600">
+            Failed to load orders data.
+          </p>
+        )}
+
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-1">
             <input
@@ -208,71 +172,103 @@ export function RetailerOrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F0EDEB]">
-              {processedOrders.length > 0 ? (
-                processedOrders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="group hover:bg-[#FDFCFB] transition-colors"
-                  >
-                    <td className="py-6 pl-4 text-[13px] font-bold text-[#5C5550]">
-                      {order.id}
-                    </td>
-                    <td className="py-6 text-[13px] font-medium text-[#C9A390]">
-                      {order.customer}
-                    </td>
-                    <td className="py-6 pr-4">
-                      <p className="text-[13px] font-bold text-[#5C5550] whitespace-pre-line leading-relaxed">
-                        {order.products}
-                      </p>
-                    </td>
-                    <td className="py-6 text-[13px] font-medium text-[#949E96]">
-                      {order.date}
-                    </td>
-                    <td className="py-6 text-[13px] font-medium text-[#949E96]">
-                      {order.total}
-                    </td>
-                    <td className="py-6">
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold whitespace-nowrap ${getStatusStyle(
-                          order.status,
-                        )}`}
+              {!isLoading && processedOrders.length > 0
+                ? processedOrders.map((order: Order) => (
+                    <tr
+                      key={order.orderId}
+                      className="group hover:bg-[#FDFCFB] transition-colors"
+                    >
+                      <td className="py-6 pl-4 text-[13px] font-bold text-[#5C5550]">
+                        {order.orderId.slice(0, 8)}...
+                      </td>
+                      <td className="py-6 text-[13px] font-medium text-[#C9A390]">
+                        {order.customerName}
+                      </td>
+                      <td className="py-6 pr-4">
+                        <p className="text-[13px] font-bold text-[#5C5550] whitespace-pre-line leading-relaxed">
+                          {order.items?.map((i) => i.productName).join(" + ") ||
+                            "-"}
+                        </p>
+                      </td>
+                      <td className="py-6 text-[13px] font-medium text-[#949E96]">
+                        {new Date(order.orderDate).toLocaleDateString("en-GB")}
+                      </td>
+                      <td className="py-6 text-[13px] font-medium text-[#949E96]">
+                        {order.totalAmount} {order.currency}
+                      </td>
+                      <td className="py-6">
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold whitespace-nowrap ${getStatusStyle(
+                            order.status,
+                          )}`}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
+                          {order.status === "NotProcessed"
+                            ? "Not Processed"
+                            : order.status}
+                        </span>
+                      </td>
+                      <td className="py-6 pr-4">
+                        <select
+                          value={order.status}
+                          onChange={(e) =>
+                            handleStatusChange(order.orderId, e.target.value)
+                          }
+                          disabled={
+                            statusMutation.isPending ||
+                            order.status === "Cancelled" ||
+                            order.status === "Delivered"
+                          }
+                          className="h-[36px] w-full rounded-[8px] border border-[#E4DCD1] bg-white px-3 text-[12px] font-medium text-[#949E96] outline-none focus:border-[#C9A390] transition-colors cursor-pointer appearance-none disabled:opacity-50"
+                          style={{
+                            backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23949E96' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                            backgroundRepeat: "no-repeat",
+                            backgroundPosition: "right 10px center",
+                            backgroundSize: "14px",
+                          }}
+                        >
+                          <option value="NotProcessed">Not Processed</option>
+                          <option value="Processing">Processing</option>
+                          <option value="Shipped">Shipped</option>
+                          <option value="Delivered">Delivered</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))
+                : !isLoading && (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="py-12 text-center text-[#949E96]"
                       >
-                        <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="py-6 pr-4">
-                      <select
-                        value={order.status}
-                        onChange={(e) =>
-                          handleStatusChange(order.id, e.target.value)
-                        }
-                        className="h-[36px] w-full rounded-[8px] border border-[#E4DCD1] bg-white px-3 text-[12px] font-medium text-[#949E96] outline-none focus:border-[#C9A390] transition-colors cursor-pointer appearance-none"
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23949E96' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                          backgroundRepeat: "no-repeat",
-                          backgroundPosition: "right 10px center",
-                          backgroundSize: "14px",
-                        }}
-                      >
-                        <option value="Not processed">Not Processed</option>
-                        <option value="Cancelled">Cancelled</option>
-                        <option value="Processing">Processing</option>
-                        <option value="Shipped">Shipped</option>
-                        <option value="Delivered">Delivered</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-[#949E96]">
-                    No orders found matching your filters.
-                  </td>
-                </tr>
-              )}
+                        No orders found matching your filters.
+                      </td>
+                    </tr>
+                  )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex items-center justify-between md:justify-end gap-2 mt-6 overflow-x-auto">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={!hasPreviousPage}
+            className="flex shrink-0 px-4 h-9 md:h-10 items-center justify-center rounded-[8px] border border-[#E4DCD1] text-[#949E96] font-bold hover:bg-gray-50 disabled:opacity-50 transition-opacity"
+          >
+            Previous
+          </button>
+          <span className="text-[13px] font-medium text-[#949E96] px-2">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={!hasNextPage}
+            className="flex shrink-0 px-4 h-9 md:h-10 items-center justify-center rounded-[8px] border border-[#E4DCD1] text-[#949E96] font-bold hover:bg-gray-50 disabled:opacity-50 transition-opacity"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
