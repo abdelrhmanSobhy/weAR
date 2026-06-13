@@ -90,7 +90,7 @@ Current limitations:
 - Favorites queries are invalidated when favorite toggle is performed from within the outfits flow.
 - All 42 new outfit tests pass (8 API adapter, 16 query hook, 18 page UI).
 
-## Command 18 Wardrobe Contract Audit (2026-06-13)
+## Wardrobe Contract Audit (2026-06-13)
 
 This is a Swagger-only audit. The CONNECT tunnel to `https://vfr-backend.onrender.com` returns `403 Forbidden` from this execution environment; no deployed endpoints were reachable.
 
