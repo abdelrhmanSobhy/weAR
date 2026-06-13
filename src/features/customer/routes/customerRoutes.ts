@@ -6,6 +6,7 @@ export const CUSTOMER_ROUTES = {
   tryOn: "/customer/try-on",
   favorites: "/customer/favorites",
   account: "/customer/account",
+  productDetails: (productId: string) => `/customer/products/${productId}`,
   login: "/login/customer",
   signup: "/signup/customer",
 } as const;

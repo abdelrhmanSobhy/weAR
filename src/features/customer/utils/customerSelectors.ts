@@ -11,5 +11,8 @@ export const selectCustomerProfile = (
   return state.user as CustomerProfile | null;
 };
 
+export const selectCustomerId = (state: AuthState): string | null =>
+  selectCustomerProfile(state)?.id ?? null;
+
 export const selectCustomerDisplayName = (state: AuthState): string =>
   selectCustomerProfile(state)?.fullName ?? "Customer";

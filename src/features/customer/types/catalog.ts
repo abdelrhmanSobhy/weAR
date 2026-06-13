@@ -1,0 +1,81 @@
+export interface CustomerProductImage {
+  id?: string;
+  url: string;
+  altText?: string | null;
+  isPrimary?: boolean;
+}
+
+export interface CustomerProduct {
+  id: string;
+  name: string;
+  brand?: string | null;
+  description?: string | null;
+  price: number;
+  discountedPrice?: number | null;
+  currency?: string | null;
+  imageUrl?: string | null;
+  images?: CustomerProductImage[];
+  categoryId?: string | null;
+  categoryName?: string | null;
+  modelId?: string | null;
+  isFavorite?: boolean;
+}
+
+export interface CustomerCategory {
+  id: string;
+  name: string;
+  slug?: string | null;
+  imageUrl?: string | null;
+  productCount?: number;
+}
+
+export interface CustomerOffer {
+  id: string;
+  title: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  discountPercentage?: number | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+}
+
+export interface CustomerCatalogParams {
+  pageNumber?: number;
+  pageSize?: number;
+  search?: string;
+  categoryId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+  offerId?: string;
+}
+
+export interface CustomerPaginatedResult<T> {
+  items: T[];
+  totalCount?: number;
+  pageNumber?: number;
+  pageSize?: number;
+  totalPages?: number;
+}
+
+export interface CompareProductsPayload {
+  productIds: string[];
+}
+
+export interface ProductsByModelIdsPayload {
+  modelIds: string[];
+}
+
+export interface FavoriteTogglePayload {
+  productId: string;
+}
+
+export interface FavoriteCheckPayload {
+  productIds: string[];
+}
+
+export interface FavoriteCheckResult {
+  productId: string;
+  isFavorite: boolean;
+}
