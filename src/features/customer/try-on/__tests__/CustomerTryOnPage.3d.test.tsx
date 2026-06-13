@@ -3,10 +3,12 @@ import { useEffect } from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { CustomerTryOnPage } from "@/features/customer/try-on/pages/CustomerTryOnPage";
+import { useCartStore } from "@/features/customer/cart/useCartStore";
 
 const viewerLoad = vi.fn();
 const mutate = vi.fn();
 let session: Record<string, unknown>;
+let mockedProduct: Record<string, unknown> | null = { id: "p1", name: "Linen Jacket", price: 120, currency: "USD", imageUrl: "https://cdn.example.test/product.png", colors: ["Taupe"], sizes: ["M"] };
 
 vi.mock("@/features/customer/try-on/components/TryOn3DViewer", () => ({
   default: function MockTryOn3DViewer({ onLoading, onReady, onError }: { onLoading?: () => void; onReady?: () => void; onError?: () => void }) {
@@ -25,7 +27,7 @@ vi.mock("@/features/customer/queries/profileAvatar.queries", () => ({
 }));
 
 vi.mock("@/features/customer/queries/catalog.queries", () => ({
-  useCustomerProduct: () => ({ isLoading: false, isError: false, data: { id: "p1", name: "Linen Jacket", price: 120, currency: "USD", imageUrl: "https://cdn.example.test/product.png", colors: ["Taupe"], sizes: ["M"] } }),
+  useCustomerProduct: (productId: string | null) => ({ isLoading: false, isError: false, data: productId ? mockedProduct : null }),
 }));
 
 vi.mock("@/features/customer/try-on/hooks/tryOn.queries", () => ({
@@ -44,9 +46,22 @@ const renderCompletedPage = async (modelUrl: unknown) => {
   await screen.findByText(/2D result complete/i);
 };
 
+const renderTryOnPage = (entry = "/customer/try-on") => {
+  render(
+    <MemoryRouter initialEntries={[entry]}>
+      <Routes>
+        <Route path="/customer/try-on" element={<CustomerTryOnPage />} />
+        <Route path="/customer/try-on/:productId" element={<CustomerTryOnPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+};
+
 beforeEach(() => {
   mutate.mockReset();
   viewerLoad.mockClear();
+  mockedProduct = { id: "p1", name: "Linen Jacket", price: 120, currency: "USD", imageUrl: "https://cdn.example.test/product.png", colors: ["Taupe"], sizes: ["M"] };
+  useCartStore.setState({ items: [] });
   (globalThis as { failViewer?: boolean }).failViewer = false;
 });
 
@@ -88,5 +103,45 @@ describe("CustomerTryOnPage progressive 3D result", () => {
     expect(mutate).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("tab", { name: /2D View/i }));
     expect(screen.getByText(/Linen Jacket · Size M · Taupe/i)).toBeInTheDocument();
+  });
+
+  it("keeps /customer/try-on without a product as a valid no-product state", async () => {
+    renderTryOnPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
+
+    expect(await screen.findByText(/No product selected/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Change Product/i })).toHaveAttribute("href", "/customer/shop");
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it("preserves product-specific try-on route state for selected variants", async () => {
+    await renderCompletedPage("https://cdn.example.test/result.glb");
+
+    expect(mutate).toHaveBeenCalledWith(
+      { productId: "p1", sessionType: "Overlay2D" },
+      expect.any(Object),
+    );
+    expect(screen.getByText(/Linen Jacket · Size M · Taupe/i)).toBeInTheDocument();
+  });
+
+  it("keeps Add to Cart available beside 3D controls without breaking the viewer", async () => {
+    await renderCompletedPage("https://cdn.example.test/result.glb");
+
+    expect(screen.getByRole("tab", { name: /3D View/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Add Linen Jacket to cart/i }));
+
+    expect(useCartStore.getState().items).toEqual([
+      expect.objectContaining({
+        productId: "p1",
+        selectedSize: "M",
+        selectedColor: "Taupe",
+        tryOnResultImage: "https://cdn.example.test/result.png",
+      }),
+    ]);
+    expect(screen.getByRole("status")).toHaveTextContent(/Added to cart: Linen Jacket/i);
+
+    fireEvent.click(screen.getByRole("tab", { name: /3D View/i }));
+    expect(await screen.findByTestId("mock-3d-viewer")).toBeInTheDocument();
   });
 });

@@ -39,7 +39,7 @@ import { CustomerLayout } from "@/features/customer/layouts/CustomerLayout";
 import { CustomerHomePage } from "@/features/customer/pages/CustomerHomePage";
 import { CustomerShopPage } from "@/features/customer/pages/CustomerShopPage";
 import { CustomerProductDetailsPage } from "@/features/customer/pages/CustomerProductDetailsPage";
-import { CustomerPlaceholderPage } from "@/features/customer/pages/CustomerPlaceholderPage";
+import { CustomerFavoritesPage } from "@/features/customer/pages/CustomerFavoritesPage";
 import { CustomerTryOnPage } from "@/features/customer/try-on/pages/CustomerTryOnPage";
 
 import { CustomerAccountPage } from "@/features/customer/pages/CustomerAccountPage";
@@ -196,12 +196,7 @@ const router = createBrowserRouter([
           },
           {
             path: "favorites",
-            element: (
-              <CustomerPlaceholderPage
-                title="Favorites"
-                description="Your saved products will appear here."
-              />
-            ),
+            element: <CustomerFavoritesPage />,
           },
           {
             path: "account",

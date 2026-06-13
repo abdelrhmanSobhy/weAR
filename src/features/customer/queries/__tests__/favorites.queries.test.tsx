@@ -9,6 +9,7 @@ import type { CustomerProduct } from "@/features/customer/types/catalog";
 
 vi.mock("@/features/customer/api/favorites.api", () => ({
   favoritesApi: {
+    getFavorites: vi.fn(),
     toggleFavorite: vi.fn(),
   },
 }));
