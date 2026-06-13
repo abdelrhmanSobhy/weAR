@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { cartItemKey, computeSubtotal, computeItemCount, type CartItem } from "../types/cart";
 import { useCartStore } from "../useCartStore";
 
@@ -93,7 +93,18 @@ describe("useCartStore", () => {
     });
 
     it("defaults quantity to 1 when not provided", () => {
-      const { quantity: _q, ...rest } = makeItem();
+      const item = makeItem();
+      const rest = {
+        productId: item.productId,
+        productName: item.productName,
+        productImage: item.productImage,
+        brand: item.brand,
+        unitPrice: item.unitPrice,
+        discountedPrice: item.discountedPrice,
+        selectedSize: item.selectedSize,
+        selectedColor: item.selectedColor,
+        productRoute: item.productRoute,
+      };
       useCartStore.getState().addItem(rest);
       expect(useCartStore.getState().items[0].quantity).toBe(1);
     });
