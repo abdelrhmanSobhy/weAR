@@ -58,4 +58,106 @@ describe("profile, addresses and avatar API adapters", () => {
     mockedApiClient.get.mockResolvedValueOnce({ data: { data: { id: "av1", customerId: "c1", avatar3dModelUrl: null, measurements: { heightCm: 170 } } } });
     await expect(avatarApi.getAvatar("c1")).resolves.toMatchObject({ avatar3dModelUrl: null, measurements: { heightCm: 170, chestCm: null } });
   });
+
+  it("normalizes flat avatar GET responses and maps shoulderWidthCm to shoulderCm", async () => {
+    mockedApiClient.get.mockResolvedValueOnce({
+      data: {
+        data: {
+          id: "av-flat",
+          heightCm: 171,
+          shoulderWidthCm: 42,
+          avatar3dModelUrl: null,
+          lastMeasuredAt: "2026-06-01T12:00:00.000Z",
+        },
+      },
+    });
+
+    await expect(avatarApi.getAvatar("c1")).resolves.toMatchObject({
+      id: "av-flat",
+      customerId: "c1",
+      avatar3dModelUrl: null,
+      updatedAt: "2026-06-01T12:00:00.000Z",
+      measurements: {
+        heightCm: 171,
+        shoulderCm: 42,
+        weightKg: null,
+      },
+    });
+  });
+
+  it("normalizes paginated avatar history and degrades malformed measurementDataJson", async () => {
+    mockedApiClient.get.mockResolvedValueOnce({
+      data: {
+        data: {
+          items: [
+            {
+              id: "hist-1",
+              source: "image",
+              recordedAt: "2026-06-02T12:00:00.000Z",
+              measurementDataJson: JSON.stringify({
+                HeightCm: 172,
+                ShoulderWidthCm: 43,
+              }),
+            },
+            {
+              id: "hist-2",
+              source: "manual",
+              recordedAt: "2026-06-03T12:00:00.000Z",
+              measurementDataJson: "{not-json",
+            },
+          ],
+        },
+      },
+    });
+
+    await expect(avatarApi.getHistory("c1")).resolves.toEqual([
+      expect.objectContaining({
+        id: "hist-1",
+        source: "image",
+        createdAt: "2026-06-02T12:00:00.000Z",
+        measurements: expect.objectContaining({
+          heightCm: 172,
+          shoulderCm: 43,
+          chestCm: null,
+        }),
+      }),
+      expect.objectContaining({
+        id: "hist-2",
+        source: "manual",
+        measurements: expect.objectContaining({
+          heightCm: null,
+          shoulderCm: null,
+        }),
+      }),
+    ]);
+  });
+
+  it("normalizes flat extraction responses and leaves multipart boundary generation to the browser", async () => {
+    const file = new File(["avatar"], "avatar.png", { type: "image/png" });
+    mockedApiClient.post.mockResolvedValueOnce({
+      data: {
+        data: {
+          id: "extracted-1",
+          heightCm: 168,
+          shoulderWidthCm: 40,
+          avatar3dModelUrl: null,
+        },
+      },
+    });
+
+    await expect(avatarApi.extractFromImage("c1", { imageFile: file, heightCm: 168 })).resolves.toMatchObject({
+      id: "extracted-1",
+      avatar3dModelUrl: null,
+      measurements: {
+        heightCm: 168,
+        shoulderCm: 40,
+      },
+    });
+
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      "/api/customers/c1/avatar/extract-from-image",
+      expect.any(FormData),
+      { headers: { "Content-Type": undefined } },
+    );
+  });
 });

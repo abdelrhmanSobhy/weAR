@@ -1,5 +1,8 @@
 import { apiClient } from "@/lib/axios";
-import { unwrapCustomerApiData } from "@/features/customer/api/customerApiUtils";
+import {
+  unwrapCustomerApiData,
+  unwrapCustomerApiList,
+} from "@/features/customer/api/customerApiUtils";
 import type {
   FavoriteCheckPayload,
   FavoriteCheckResult,
@@ -12,7 +15,7 @@ export const favoritesApi = {
     const response = await apiClient.get(
       `/api/customers/${customerId}/favorites`,
     );
-    return unwrapCustomerApiData<CustomerProduct[]>(response.data);
+    return unwrapCustomerApiList<CustomerProduct>(response.data);
   },
 
   toggleFavorite: async (
