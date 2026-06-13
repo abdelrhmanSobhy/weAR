@@ -80,21 +80,21 @@ export function CustomerLoginPage() {
 
   return (
     <CustomerAuthLayout imageSrc={loginImg} imageAlt="Customer Login">
-      <div className="mb-14 text-center">
+      <div className="mb-7 text-center">
         <h1
-          className="mb-2 text-[36px] font-bold text-[#A37E6B] md:text-[40px]"
+          className="mb-1 text-[32px] font-bold text-[#A37E6B] md:text-[36px]"
           style={{ fontFamily: '"PT Serif", serif' }}
         >
           Login
         </h1>
-        <p className="text-[20px] leading-[1.05] text-[#C9A390]">
+        <p className="text-[18px] leading-[1.05] text-[#C9A390]">
           Welcome back! Please log in to access
           <br />
           your account
         </p>
       </div>
 
-      <form onSubmit={handleLogin} className="flex flex-col gap-5">
+      <form onSubmit={handleLogin} className="flex flex-col gap-3.5">
         {locationState?.message && (
           <div className="rounded-[14px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-[14px] text-emerald-700">
             {locationState.message}
@@ -107,7 +107,7 @@ export function CustomerLoginPage() {
         )}
 
         <div>
-          <label className="mb-3 block text-[18px] font-medium text-[#C9A390]">
+          <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
             Email
           </label>
           <input
@@ -115,13 +115,13 @@ export function CustomerLoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your Email"
-            className="h-[80px] w-full rounded-[16px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
+            className="h-[58px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
             required
           />
         </div>
 
         <div>
-          <label className="mb-3 block text-[18px] font-medium text-[#C9A390]">
+          <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
             Password
           </label>
           <div className="relative">
@@ -130,7 +130,7 @@ export function CustomerLoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your Password"
-              className="h-[80px] w-full rounded-[16px] border border-[#C9A390] bg-white px-5 pr-14 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
+              className="h-[58px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 pr-14 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
               required
             />
             <button
@@ -145,19 +145,19 @@ export function CustomerLoginPage() {
           <div className="mt-2 text-right">
             <Link
               to="/forgot-password"
-              className="text-[16px] font-medium text-[#B6A092] transition-colors hover:text-[#A37E6B]"
+              className="text-[14px] font-medium text-[#B6A092] transition-colors hover:text-[#A37E6B]"
             >
               Forget Password?
             </Link>
           </div>
         </div>
 
-        <label className="mt-3 flex items-center gap-3 text-[18px] font-medium text-[#C9A390]">
+        <label className="mt-1 flex items-center gap-3 text-[16px] font-medium text-[#C9A390]">
           <input
             type="checkbox"
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
-            className="h-5 w-5 accent-[#C9A390]"
+            className="h-4 w-4 accent-[#C9A390]"
           />
           Remember me
         </label>
@@ -165,14 +165,14 @@ export function CustomerLoginPage() {
         <button
           type="submit"
           disabled={isLoading}
-          className="mt-2 h-[80px] w-full rounded-[16px] bg-[#C9A390] text-[20px] font-medium text-white shadow-md shadow-[#C9A390]/20 transition-opacity hover:opacity-95 disabled:opacity-70"
+          className="mt-2 h-[58px] w-full rounded-[14px] bg-[#C9A390] text-[20px] font-medium text-white shadow-md shadow-[#C9A390]/20 transition-opacity hover:opacity-95 disabled:opacity-70"
         >
           {isLoading ? "Loading..." : "Login"}
         </button>
 
-        <div className="my-2 flex items-center gap-2">
+        <div className="my-1 flex items-center gap-2">
           <div className="h-px flex-1 bg-[#C9A390]"></div>
-          <span className="text-[16px] font-medium uppercase text-[#C9A390]">
+          <span className="text-[14px] font-medium uppercase text-[#C9A390]">
             OR
           </span>
           <div className="h-px flex-1 bg-[#C9A390]"></div>
@@ -180,13 +180,13 @@ export function CustomerLoginPage() {
 
         <button
           type="button"
-          className="flex h-[80px] w-full items-center justify-center gap-5 rounded-[16px] border border-[#C9A390] bg-white text-[20px] font-medium text-[#B6A092] shadow-sm transition-colors hover:bg-gray-50"
+          className="flex h-[58px] w-full items-center justify-center gap-4 rounded-[14px] border border-[#C9A390] bg-white text-[20px] font-medium text-[#B6A092] shadow-sm transition-colors hover:bg-gray-50"
         >
-          <img src={googleIcon} alt="Google" className="h-7 w-7" />
+          <img src={googleIcon} alt="Google" className="h-6 w-6" />
           Login with Google
         </button>
 
-        <div className="mt-6 text-center text-[18px] text-[#C9A390]">
+        <div className="mt-3 text-center text-[16px] text-[#C9A390]">
           Don&apos;t have an account?{" "}
           <Link
             to="/signup/customer"

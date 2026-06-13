@@ -149,15 +149,15 @@ export function CustomerSignupPage() {
 
   return (
     <CustomerAuthLayout imageSrc={signupImg} imageAlt="Customer Signup">
-      <div className="flex h-full flex-col justify-center">
-        <div className="mb-10 text-center">
+      <div className="flex h-full flex-col">
+        <div className="mb-5 text-center">
           <h1
-            className="mb-1 text-[36px] font-bold text-[#A37E6B] md:text-[40px]"
+            className="mb-1 text-[32px] font-bold text-[#A37E6B] md:text-[36px]"
             style={{ fontFamily: '"PT Serif", serif' }}
           >
             Sign-up
           </h1>
-          <p className="text-[20px] leading-[1.05] text-[#C9A390]">
+          <p className="text-[18px] leading-[1.05] text-[#C9A390]">
             Welcome to weAR
             <br />
             Create your account here!
@@ -176,9 +176,9 @@ export function CustomerSignupPage() {
         )}
 
         {step === 1 ? (
-          <form onSubmit={handleRegister} className="flex flex-col gap-4">
+          <form onSubmit={handleRegister} className="flex flex-col gap-3">
             <div>
-              <label className="mb-2 block text-[18px] font-medium text-[#C9A390]">
+              <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
                 Name
               </label>
               <input
@@ -186,13 +186,13 @@ export function CustomerSignupPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Enter your Name"
-                className="h-[70px] w-full rounded-[16px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
+                className="h-[56px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
                 required
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-[18px] font-medium text-[#C9A390]">
+              <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
                 Email
               </label>
               <input
@@ -200,13 +200,13 @@ export function CustomerSignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your Email"
-                className="h-[70px] w-full rounded-[16px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
+                className="h-[56px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
                 required
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-[18px] font-medium text-[#C9A390]">
+              <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
                 Password
               </label>
               <div className="relative">
@@ -215,7 +215,7 @@ export function CustomerSignupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your Password"
-                  className="h-[70px] w-full rounded-[16px] border border-[#C9A390] bg-white px-5 pr-12 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
+                  className="h-[56px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 pr-12 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
                   required
                 />
                 <button
@@ -230,7 +230,7 @@ export function CustomerSignupPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-[18px] font-medium text-[#C9A390]">
+              <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
                 Phone Number
               </label>
               <input
@@ -238,12 +238,12 @@ export function CustomerSignupPage() {
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="Enter your Phone Number"
-                className="h-[70px] w-full rounded-[16px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
+                className="h-[56px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
                 required
               />
             </div>
 
-            <div className="mt-3 flex items-center justify-between">
+            <div className="mt-2 flex items-center justify-between">
               <div className="flex gap-2">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#C9A390]" />
                 <span className="h-2.5 w-2.5 rounded-full bg-[#E4DCD1]" />
@@ -251,16 +251,16 @@ export function CustomerSignupPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="h-10 rounded-[10px] bg-[#C9A390] px-8 text-[20px] font-medium text-white transition-opacity hover:opacity-95 disabled:opacity-70"
+                className="h-9 rounded-[10px] bg-[#C9A390] px-7 text-[18px] font-medium text-white transition-opacity hover:opacity-95 disabled:opacity-70"
               >
                 {isLoading ? "Loading..." : "Next"}
               </button>
             </div>
           </form>
         ) : (
-          <form onSubmit={handleCompleteProfile} className="flex flex-col gap-5">
+          <form onSubmit={handleCompleteProfile} className="flex flex-col gap-4">
             <div>
-              <label className="mb-2 block text-[18px] font-medium text-[#C9A390]">
+              <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
                 Age
               </label>
               <input
@@ -269,16 +269,16 @@ export function CustomerSignupPage() {
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
                 placeholder="Enter your Age"
-                className="h-[70px] w-full rounded-[16px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
+                className="h-[56px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
                 required
               />
             </div>
 
             <fieldset>
-              <legend className="mb-4 text-[18px] font-medium text-[#C9A390]">
+              <legend className="mb-3 text-[16px] font-medium text-[#C9A390]">
                 Gender
               </legend>
-              <div className="flex gap-8 text-[18px] text-[#A37E6B]">
+              <div className="flex gap-8 text-[16px] text-[#A37E6B]">
                 {(["Male", "Female"] as CustomerGender[]).map((option) => (
                   <label key={option} className="flex items-center gap-3">
                     <input
@@ -287,7 +287,7 @@ export function CustomerSignupPage() {
                       value={option}
                       checked={gender === option}
                       onChange={() => setGender(option)}
-                      className="h-5 w-5 accent-[#C9A390]"
+                      className="h-4 w-4 accent-[#C9A390]"
                     />
                     {option}
                   </label>
@@ -296,17 +296,17 @@ export function CustomerSignupPage() {
             </fieldset>
 
             <fieldset>
-              <legend className="mb-4 text-[18px] font-medium text-[#C9A390]">
+              <legend className="mb-3 text-[16px] font-medium text-[#C9A390]">
                 Do you want to create your own avatar now?
               </legend>
-              <div className="flex gap-8 text-[18px] text-[#A37E6B]">
+              <div className="flex gap-8 text-[16px] text-[#A37E6B]">
                 <label className="flex items-center gap-3">
                   <input
                     type="radio"
                     name="createAvatar"
                     checked={createAvatar === true}
                     onChange={() => setCreateAvatar(true)}
-                    className="h-5 w-5 accent-[#C9A390]"
+                    className="h-4 w-4 accent-[#C9A390]"
                   />
                   Yes
                 </label>
@@ -316,14 +316,14 @@ export function CustomerSignupPage() {
                     name="createAvatar"
                     checked={createAvatar === false}
                     onChange={() => setCreateAvatar(false)}
-                    className="h-5 w-5 accent-[#C9A390]"
+                    className="h-4 w-4 accent-[#C9A390]"
                   />
                   No
                 </label>
               </div>
             </fieldset>
 
-            <div className="mt-40 flex items-center justify-between md:mt-52">
+            <div className="mt-auto flex items-center justify-between pt-6">
               <div className="flex gap-2">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#E4DCD1]" />
                 <span className="h-2.5 w-2.5 rounded-full bg-[#C9A390]" />
@@ -331,7 +331,7 @@ export function CustomerSignupPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="h-10 rounded-[10px] bg-[#C9A390] px-8 text-[20px] font-medium text-white transition-opacity hover:opacity-95 disabled:opacity-70"
+                className="h-9 rounded-[10px] bg-[#C9A390] px-7 text-[18px] font-medium text-white transition-opacity hover:opacity-95 disabled:opacity-70"
               >
                 {isLoading ? "Loading..." : "Submit"}
               </button>
@@ -339,7 +339,7 @@ export function CustomerSignupPage() {
           </form>
         )}
 
-        <div className="mt-20 text-center text-[18px] text-[#C9A390]">
+        <div className="mt-auto pt-4 text-center text-[16px] text-[#C9A390]">
           Have an account?{" "}
           <Link
             to="/login/customer"
