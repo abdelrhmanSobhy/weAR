@@ -35,6 +35,7 @@ import { CustomerSignupPage } from "@/features/customer/pages/CustomerSignupPage
 import { CustomerLayout } from "@/features/customer/layouts/CustomerLayout";
 import { CustomerHomePage } from "@/features/customer/pages/CustomerHomePage";
 import { CustomerPlaceholderPage } from "@/features/customer/pages/CustomerPlaceholderPage";
+import { CustomerProductDetailsPage } from "@/features/customer/pages/CustomerProductDetailsPage";
 import { CUSTOMER_ROUTES } from "@/features/customer/routes/customerRoutes";
 
 import { ComingSoonPage } from "@/features/common/pages/ComingSoonPage";
@@ -107,6 +108,7 @@ const router = createBrowserRouter([
               />
             ),
           },
+          { path: "products/:productId", element: <CustomerProductDetailsPage /> },
           {
             path: "try-on",
             element: (
