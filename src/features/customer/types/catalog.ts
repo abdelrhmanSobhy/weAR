@@ -19,6 +19,18 @@ export interface CustomerProduct {
   categoryName?: string | null;
   modelId?: string | null;
   isFavorite?: boolean;
+  colors?: string[];
+  sizes?: string[];
+  fabricMaterial?: string | null;
+  material?: string | null;
+  pattern?: string | null;
+  bodyShape?: string | null;
+  features?: string[];
+  careInstructions?: string | string[] | null;
+  stockStatus?: string | null;
+  stockQuantity?: number | null;
+  views?: number | null;
+  subcategoryName?: string | null;
 }
 
 export interface CustomerCategory {
@@ -44,11 +56,18 @@ export interface CustomerCatalogParams {
   pageSize?: number;
   search?: string;
   categoryId?: string;
+  subcategoryId?: string;
   minPrice?: number;
   maxPrice?: number;
   sortBy?: string;
   sortDirection?: "asc" | "desc";
   offerId?: string;
+  colors?: string[];
+  sizes?: string[];
+  fabricMaterials?: string[];
+  bodyShapes?: string[];
+  fabricPatterns?: string[];
+  brands?: string[];
 }
 
 export interface CustomerPaginatedResult<T> {
@@ -78,4 +97,13 @@ export interface FavoriteCheckPayload {
 export interface FavoriteCheckResult {
   productId: string;
   isFavorite: boolean;
+}
+
+
+export interface SizeRecommendation {
+  recommendedSize?: string | null;
+  size?: string | null;
+  confidence?: number | string | null;
+  explanation?: string | null;
+  reason?: string | null;
 }

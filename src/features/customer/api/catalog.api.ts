@@ -28,6 +28,7 @@ export const catalogApi = {
   getSimilarProducts: async (productId: string) => {
     const response = await apiClient.get(
       `/api/catalog/products/${productId}/similar`,
+      { params: { limit: 8 } },
     );
     return unwrapCustomerApiData<CustomerProduct[]>(response.data);
   },
