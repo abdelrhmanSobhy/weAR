@@ -41,6 +41,12 @@ import { CustomerShopPage } from "@/features/customer/pages/CustomerShopPage";
 import { CustomerProductDetailsPage } from "@/features/customer/pages/CustomerProductDetailsPage";
 import { CustomerPlaceholderPage } from "@/features/customer/pages/CustomerPlaceholderPage";
 
+import { CustomerAccountPage } from "@/features/customer/pages/CustomerAccountPage";
+import { CustomerAddressesPage } from "@/features/customer/pages/CustomerAddressesPage";
+import { CustomerAvatarPage } from "@/features/customer/pages/CustomerAvatarPage";
+import { CustomerAvatarManualPage } from "@/features/customer/pages/CustomerAvatarManualPage";
+import { CustomerAvatarPhotoPage } from "@/features/customer/pages/CustomerAvatarPhotoPage";
+
 import { CUSTOMER_ROUTES } from "@/features/customer/routes/customerRoutes";
 
 const router = createBrowserRouter([
@@ -56,7 +62,6 @@ const router = createBrowserRouter([
         path: "/login",
         element: <Navigate to="/login/retailer" replace />,
       },
-
       {
         path: "/login/retailer",
         element: <RetailerLoginPage />,
@@ -85,7 +90,6 @@ const router = createBrowserRouter([
         path: "/reset-password",
         element: <ResetPasswordPage />,
       },
-
       {
         path: CUSTOMER_ROUTES.login,
         element: <CustomerLoginPage />,
@@ -199,12 +203,23 @@ const router = createBrowserRouter([
           },
           {
             path: "account",
-            element: (
-              <CustomerPlaceholderPage
-                title="Account"
-                description="Manage your customer profile and preferences here."
-              />
-            ),
+            element: <CustomerAccountPage />,
+          },
+          {
+            path: "account/addresses",
+            element: <CustomerAddressesPage />,
+          },
+          {
+            path: "avatar",
+            element: <CustomerAvatarPage />,
+          },
+          {
+            path: "avatar/manual",
+            element: <CustomerAvatarManualPage />,
+          },
+          {
+            path: "avatar/photo",
+            element: <CustomerAvatarPhotoPage />,
           },
         ],
       },
