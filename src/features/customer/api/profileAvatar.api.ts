@@ -93,6 +93,47 @@ type AvatarHistoryItem = {
 
 type AvatarHistoryResponse = Partial<PaginatedCustomerResponse<AvatarHistoryItem>>;
 
+type BackendAvatarMeasurementPayload = {
+  avatarId?: string;
+  heightCm: number;
+  weightKg: number;
+  chestCm: number | null;
+  waistCm: number | null;
+  hipsCm: number | null;
+  shoulderWidthCm: number | null;
+  inseamCm: number | null;
+  neckCm: null;
+  armLengthCm: null;
+  shoeSizeEu: null;
+  bodyShape: null;
+  source: "Manual";
+};
+
+const toBackendAvatarMeasurements = (
+  measurements: BodyMeasurements,
+  avatarId?: string,
+): BackendAvatarMeasurementPayload => {
+  if (!measurements.heightCm || !measurements.weightKg) {
+    throw new Error("Height and weight are required by the avatar backend.");
+  }
+
+  return {
+    avatarId,
+    heightCm: measurements.heightCm,
+    weightKg: measurements.weightKg,
+    chestCm: measurements.chestCm ?? null,
+    waistCm: measurements.waistCm ?? null,
+    hipsCm: measurements.hipsCm ?? null,
+    shoulderWidthCm: measurements.shoulderCm ?? null,
+    inseamCm: measurements.inseamCm ?? null,
+    neckCm: null,
+    armLengthCm: null,
+    shoeSizeEu: null,
+    bodyShape: null,
+    source: "Manual",
+  };
+};
+
 const mapFlatAvatarToCustomerAvatar = (
   avatar: FlatAvatarResponse,
   customerId: string,
@@ -163,7 +204,6 @@ const parseHistoryMeasurements = (
   }
 };
 
-
 export const avatarApi = {
   getAvatar: async (customerId: string, signal?: AbortSignal): Promise<CustomerAvatar | null> => {
     try {
@@ -183,10 +223,10 @@ export const avatarApi = {
     }
   },
   createAvatar: async (customerId: string, measurements: BodyMeasurements): Promise<string> => {
-    const response = await apiClient.post(`/api/customers/${customerId}/avatar`, {
-      ...measurements,
-      source: "manual",
-    });
+    const response = await apiClient.post(
+      `/api/customers/${customerId}/avatar`,
+      toBackendAvatarMeasurements(measurements),
+    );
     return unwrapCustomerApiData<string>(response.data);
   },
   deleteAvatar: async (customerId: string, avatarId: string): Promise<void> => {
@@ -245,11 +285,10 @@ export const avatarApi = {
     };
   },
   updateMeasurements: async (customerId: string, avatarId: string, measurements: BodyMeasurements): Promise<void> => {
-    await apiClient.patch(`/api/customers/${customerId}/avatar/measurements`, {
-      avatarId,
-      ...measurements,
-      source: "manual",
-    });
+    await apiClient.patch(
+      `/api/customers/${customerId}/avatar/measurements`,
+      toBackendAvatarMeasurements(measurements, avatarId),
+    );
   },
   getSizeRecommendation: async (customerId: string, productId: string, signal?: AbortSignal) => {
     const response = await apiClient.get(`/api/customers/${customerId}/avatar/size-recommendation/${productId}`, { signal });
@@ -273,19 +312,7 @@ export const avatarApi = {
       },
     );
 
-    const extracted = unwrapCustomerApiData<{
-      id: string;
-      heightCm?: number | null;
-      weightKg?: number | null;
-      chestCm?: number | null;
-      waistCm?: number | null;
-      hipsCm?: number | null;
-      shoulderWidthCm?: number | null;
-      shoulderCm?: number | null;
-      inseamCm?: number | null;
-      avatar3dModelUrl?: string | null;
-      lastMeasuredAt?: string;
-    }>(response.data);
+    const extracted = unwrapCustomerApiData<FlatAvatarResponse>(response.data);
 
     return mapFlatAvatarToCustomerAvatar(
       extracted,
