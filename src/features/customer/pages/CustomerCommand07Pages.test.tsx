@@ -86,9 +86,10 @@ describe("Command 07 customer pages", () => {
   it("uses create versus update behavior on manual measurements", () => {
     renderPage(<CustomerAvatarManualPage />, "/customer/avatar/manual");
     fireEvent.change(screen.getByLabelText(/Height/), { target: { value: "180" } });
+    fireEvent.change(screen.getByLabelText(/Weight/), { target: { value: "75" } });
     fireEvent.click(screen.getByRole("button", { name: "Create avatar" }));
-    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ heightCm: 180 }), expect.any(Object));
-    hooks.useCustomerAvatar.mockReturnValue({ isLoading: false, isError: false, data: { id: "av1", customerId: "c1", avatar3dModelUrl: null, measurements: { heightCm: 170 } } });
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ heightCm: 180, weightKg: 75 }), expect.any(Object));
+    hooks.useCustomerAvatar.mockReturnValue({ isLoading: false, isError: false, data: { id: "av1", customerId: "c1", avatar3dModelUrl: null, measurements: { heightCm: 170, weightKg: 70 } } });
     renderPage(<CustomerAvatarManualPage />, "/customer/avatar/manual");
     expect(screen.getByRole("button", { name: "Update measurements" })).toBeInTheDocument();
   });
