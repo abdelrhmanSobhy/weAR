@@ -65,6 +65,7 @@ describe("profile, addresses and avatar API adapters", () => {
         data: {
           id: "av-flat",
           heightCm: 171,
+          weightKg: 70,
           shoulderWidthCm: 42,
           avatar3dModelUrl: null,
           lastMeasuredAt: "2026-06-01T12:00:00.000Z",
@@ -79,23 +80,34 @@ describe("profile, addresses and avatar API adapters", () => {
       updatedAt: "2026-06-01T12:00:00.000Z",
       measurements: {
         heightCm: 171,
+        weightKg: 70,
         shoulderCm: 42,
-        weightKg: null,
       },
     });
   });
 
-
-  it("creates manual avatars with root measurements, source, and UUID response", async () => {
+  it("creates manual avatars with backend measurement names, Manual source, and UUID response", async () => {
     mockedApiClient.post.mockResolvedValueOnce({ data: { data: "avatar-uuid-1" } });
-    await expect(avatarApi.createAvatar("c1", { heightCm: 170, chestCm: null })).resolves.toBe("avatar-uuid-1");
-    expect(mockedApiClient.post).toHaveBeenCalledWith("/api/customers/c1/avatar", { heightCm: 170, chestCm: null, source: "manual" });
+    await expect(avatarApi.createAvatar("c1", { heightCm: 170, weightKg: 68, chestCm: null, shoulderCm: 42 })).resolves.toBe("avatar-uuid-1");
+    expect(mockedApiClient.post).toHaveBeenCalledWith("/api/customers/c1/avatar", expect.objectContaining({
+      heightCm: 170,
+      weightKg: 68,
+      chestCm: null,
+      shoulderWidthCm: 42,
+      source: "Manual",
+    }));
   });
 
-  it("updates measurements with avatarId, root fields, source, and accepts 204 empty responses", async () => {
+  it("updates measurements with avatarId, backend fields, Manual source, and accepts 204 empty responses", async () => {
     mockedApiClient.patch.mockResolvedValueOnce({ status: 204, data: undefined });
-    await expect(avatarApi.updateMeasurements("c1", "av1", { heightCm: 171, waistCm: null })).resolves.toBeUndefined();
-    expect(mockedApiClient.patch).toHaveBeenCalledWith("/api/customers/c1/avatar/measurements", { avatarId: "av1", heightCm: 171, waistCm: null, source: "manual" });
+    await expect(avatarApi.updateMeasurements("c1", "av1", { heightCm: 171, weightKg: 69, waistCm: null })).resolves.toBeUndefined();
+    expect(mockedApiClient.patch).toHaveBeenCalledWith("/api/customers/c1/avatar/measurements", expect.objectContaining({
+      avatarId: "av1",
+      heightCm: 171,
+      weightKg: 69,
+      waistCm: null,
+      source: "Manual",
+    }));
   });
 
   it("deletes avatars with Axios config.data and accepts 204 empty responses", async () => {
@@ -111,7 +123,7 @@ describe("profile, addresses and avatar API adapters", () => {
           items: [
             {
               id: "hist-1",
-              source: "image",
+              source: "BodyScan",
               recordedAt: "2026-06-02T12:00:00.000Z",
               measurementDataJson: JSON.stringify({
                 HeightCm: 172,
@@ -120,7 +132,7 @@ describe("profile, addresses and avatar API adapters", () => {
             },
             {
               id: "hist-2",
-              source: "manual",
+              source: "Manual",
               recordedAt: "2026-06-03T12:00:00.000Z",
               measurementDataJson: "{not-json",
             },
@@ -132,24 +144,24 @@ describe("profile, addresses and avatar API adapters", () => {
     await expect(avatarApi.getHistory("c1")).resolves.toMatchObject({
       pageNumber: undefined,
       items: [
-      expect.objectContaining({
-        id: "hist-1",
-        source: "image",
-        createdAt: "2026-06-02T12:00:00.000Z",
-        measurements: expect.objectContaining({
-          heightCm: 172,
-          shoulderCm: 43,
-          chestCm: null,
+        expect.objectContaining({
+          id: "hist-1",
+          source: "BodyScan",
+          createdAt: "2026-06-02T12:00:00.000Z",
+          measurements: expect.objectContaining({
+            heightCm: 172,
+            shoulderCm: 43,
+            chestCm: null,
+          }),
         }),
-      }),
-      expect.objectContaining({
-        id: "hist-2",
-        source: "manual",
-        measurements: expect.objectContaining({
-          heightCm: null,
-          shoulderCm: null,
+        expect.objectContaining({
+          id: "hist-2",
+          source: "Manual",
+          measurements: expect.objectContaining({
+            heightCm: null,
+            shoulderCm: null,
+          }),
         }),
-      }),
       ],
     });
   });
@@ -162,14 +174,14 @@ describe("profile, addresses and avatar API adapters", () => {
           id: "extracted-1",
           heightCm: 168,
           shoulderWidthCm: 40,
-          avatar3dModelUrl: null,
+          avatar3dModelUrl: "https://cdn.example.test/avatar.glb",
         },
       },
     });
 
     await expect(avatarApi.extractFromImage("c1", { imageFile: file, heightCm: 168 })).resolves.toMatchObject({
       id: "extracted-1",
-      avatar3dModelUrl: null,
+      avatar3dModelUrl: "https://cdn.example.test/avatar.glb",
       measurements: {
         heightCm: 168,
         shoulderCm: 40,
