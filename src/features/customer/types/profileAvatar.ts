@@ -49,7 +49,7 @@ export type CustomerAddressPayload = Omit<CustomerAddress, "id" | "isDefault"> &
 
 export const measurementFieldConfigs = [
   { key: "heightCm", label: "Height", unit: "cm", required: true, min: 1, max: 300 },
-  { key: "weightKg", label: "Weight", unit: "kg", required: false, min: 1, max: 400 },
+  { key: "weightKg", label: "Weight", unit: "kg", required: true, min: 1, max: 400 },
   { key: "chestCm", label: "Chest", unit: "cm", required: false, min: 1, max: 250 },
   { key: "waistCm", label: "Waist", unit: "cm", required: false, min: 1, max: 250 },
   { key: "hipsCm", label: "Hips", unit: "cm", required: false, min: 1, max: 250 },
@@ -58,8 +58,14 @@ export const measurementFieldConfigs = [
 ] as const;
 
 export type MeasurementFieldKey = (typeof measurementFieldConfigs)[number]["key"];
-export type BodyMeasurements = Partial<Record<MeasurementFieldKey, number | null>> & { heightCm: number | null };
-export type ManualMeasurementsInput = Partial<Record<MeasurementFieldKey, number | null>> & { heightCm: number };
+export type BodyMeasurements = Partial<Record<MeasurementFieldKey, number | null>> & {
+  heightCm: number | null;
+  weightKg?: number | null;
+};
+export type ManualMeasurementsInput = Partial<Record<MeasurementFieldKey, number | null>> & {
+  heightCm: number;
+  weightKg: number;
+};
 
 const optionalMeasurement = z.preprocess(
   (value) => (value === "" || value === undefined ? null : value),
@@ -68,7 +74,7 @@ const optionalMeasurement = z.preprocess(
 
 export const manualMeasurementSchema = z.object({
   heightCm: z.number().min(1).max(300),
-  weightKg: optionalMeasurement.optional(),
+  weightKg: z.number().min(1).max(400),
   chestCm: optionalMeasurement.optional(),
   waistCm: optionalMeasurement.optional(),
   hipsCm: optionalMeasurement.optional(),
@@ -88,7 +94,7 @@ export interface CustomerAvatar {
 export interface MeasurementHistoryEntry {
   id: string;
   measurements: BodyMeasurements;
-  source: "manual" | "image" | string;
+  source: "Manual" | "BodyScan" | "AIEstimate" | string;
   createdAt: string;
 }
 
@@ -116,7 +122,9 @@ export const mapManualMeasurementsToPayload = (input: ManualMeasurementsInput): 
     return payload;
   }, {} as BodyMeasurements);
 
-export const normalizeNullableMeasurements = (measurements: Partial<Record<MeasurementFieldKey, number | null | undefined>>): BodyMeasurements =>
+export const normalizeNullableMeasurements = (
+  measurements: Partial<Record<MeasurementFieldKey, number | null | undefined>>,
+): BodyMeasurements =>
   measurementFieldConfigs.reduce((normalized, field) => {
     normalized[field.key] = measurements[field.key] ?? null;
     return normalized;
