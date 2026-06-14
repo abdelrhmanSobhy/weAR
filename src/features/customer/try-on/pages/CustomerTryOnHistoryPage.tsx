@@ -1,11 +1,14 @@
 import { Link } from "react-router-dom";
-import { AlertCircle, Clock3, RotateCcw, Shirt, Sparkles } from "lucide-react";
+import { AlertCircle, Box, Clock3, RotateCcw, Shirt, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CUSTOMER_ROUTES } from "@/features/customer/routes/customerRoutes";
 import { customerTheme } from "@/features/customer/styles/customerTheme";
 import { useCustomerTryOnSessions } from "@/features/customer/try-on/hooks/tryOn.queries";
 import type { TryOnSession } from "@/features/customer/try-on/types/tryOn";
+import { toSafeModelUrl } from "@/features/customer/try-on/utils/modelUrl";
 import { cn } from "@/lib/utils";
+
+const isModelUrl = (url: string) => /\.(glb|gltf|usdz)(\?.*)?$/i.test(url);
 
 const processingStatuses = new Set(["processing", "pending", "queued", "running", "in_progress", "created"]);
 const failedStatuses = new Set(["failed", "error", "cancelled", "canceled", "rejected"]);
@@ -41,12 +44,18 @@ function SessionCard({ session }: { session: TryOnSession }) {
   const state = getSessionState(session);
   const style = statusStyles[state];
   const StatusIcon = style.icon;
-  const imageUrl = session.resultImageUrl ?? session.product?.primaryImageUrl ?? session.product?.imageUrls?.[0] ?? null;
+  const safeResultUrl = toSafeModelUrl(session.resultImageUrl);
+  const resultIsModel = safeResultUrl ? isModelUrl(safeResultUrl) : false;
+  const imageUrl = (!resultIsModel ? session.resultImageUrl : null) ?? session.product?.primaryImageUrl ?? session.product?.imageUrls?.[0] ?? null;
 
   return (
     <article className={`${customerTheme.card} grid gap-4 p-5 sm:grid-cols-[140px_minmax(0,1fr)]`}>
       <div className="flex h-40 items-center justify-center overflow-hidden rounded-3xl bg-[#F4EDE7]">
-        {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full object-cover" /> : <Shirt className="h-12 w-12 text-[#A37E6B]" aria-hidden="true" />}
+        {resultIsModel
+          ? <Box className="h-12 w-12 text-[#A37E6B]" aria-hidden="true" />
+          : imageUrl
+            ? <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            : <Shirt className="h-12 w-12 text-[#A37E6B]" aria-hidden="true" />}
       </div>
       <div className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
