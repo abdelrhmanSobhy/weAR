@@ -40,6 +40,16 @@ The following facts were verified against the deployed backend (`https://vfr-bac
 - No optimistic itemCount increment; server value authoritative via invalidation/refetch.
 - Tests 56–62 added covering CONFLICT, InvalidName, coverImageUrl, and idempotent add.
 
+### Frontend alignment actions taken (third batch — 2026-06-14, final)
+
+- Add Product flow: Favorites-backed picker (`role="listbox"` / `role="option"`) with loading/error/empty states.
+- Post-add 500 handled: success preserved; amber warning shown with Retry when items refetch fails.
+- Favorites NOT mutated; Favorites queries NOT invalidated.
+- `normalizeCollectionItem` returns `null` for items missing `id` or `productId`; nulls filtered.
+- `normalizePagedCollectionItems` throws `INVALID_ITEMS_RESPONSE` for unrecognized shapes.
+- Remove item route confirmed against Swagger: `DELETE .../items/{itemId}` (NOT `.../items/products/{productId}`).
+- Tests 63–74 added covering Add Product flow, malformed item filtering, INVALID_ITEMS_RESPONSE.
+
 ---
 
 ## Command 20 — Wardrobe Collections (2026-06-14)
@@ -53,7 +63,10 @@ The following facts were verified against the deployed backend (`https://vfr-bac
 - Branch: `claude/vigilant-rubin-29ob7b`.
 - `npm ci` passed.
 - `npm run build` passed (chunk size warnings pre-existing).
-- `npm test` after Command 20: **49 files, 384 tests passed** (11 new test cases from api tests 1–19 + queries tests 20–30 + page tests 31–55 across 3 new test files).
+- `npm test` after Command 20 (final): **49 files, 423 tests passed** (50 new test cases: api tests 1–31, queries tests 32–44, page tests 45–74 across 3 new test files).
+  - Phase 1 (Swagger-only): tests 1–55 (384 total).
+  - Phase 2 (runtime-alignment batch 1): tests 56–62 (CONFLICT, InvalidName, coverImageUrl, idempotent add).
+  - Phase 3 (runtime-alignment batch 2 + add-product flow): tests 63–74 (Add Product flow, malformed item filtering, INVALID_ITEMS_RESPONSE).
 - `git diff --check` passed.
 - No merge conflicts.
 

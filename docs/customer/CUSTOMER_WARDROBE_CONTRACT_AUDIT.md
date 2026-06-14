@@ -11,18 +11,31 @@
 
 Wardrobe Collections — **runtime-verified 2026-06-14**. CONNECT tunnel was accessible for runtime tests.
 
-**Implemented and runtime-verified (updated 2026-06-14 second batch):**
+**Implemented and runtime-verified (updated 2026-06-14 third batch — final):**
 - `GET /api/customers/{customerId}/wardrobe/collections` — **runtime-verified**: HTTP 200, `data` is a **direct array** (NOT paginated envelope). After add, refreshed list reflects `itemCount: 1` and `coverImageUrl`. Adapter normalizes with synthesized pagination. Filters entries with empty `id` or `name`. Throws `INVALID_LIST_RESPONSE` for unrecognized shapes.
 - `POST /api/customers/{customerId}/wardrobe/collections` — **runtime-verified**: HTTP 201; `data` is UUID string. Name trimmed; description nullable. Duplicate name → **HTTP 409 `CONFLICT`** (runtime-verified); message preserved; form stays open, values preserved. `WardrobeCollectionApiError` on error.
 - `PATCH /api/customers/{customerId}/wardrobe/collections/{id}` — **runtime-verified**: PATCH `{ newName }` → HTTP 204. PUT → 405. Blank `newName` → **HTTP 422 `InvalidName`** (runtime-verified); error displayed, form stays open, input preserved. No body parsing on success.
 - `DELETE /api/customers/{customerId}/wardrobe/collections/{id}` — **runtime-verified**: HTTP 204; no body. Subsequent GET confirmed removal (empty array). Selected collection cleared on delete. Item queries invalidated for deleted collection.
 - `GET /api/customers/{customerId}/wardrobe/collections/{id}/items` — **runtime-verified (empty case)**: HTTP 200 with paginated `data.items` envelope. Normalizes `WardrobeCollectionItem[]`. Handles `productImageUrl` (Swagger) or `primaryImageUrl`. **After add, GET items returns HTTP 500 INTERNAL_ERROR — backend read defect. Add itself succeeded and persisted (itemCount updated in collection list). UI shows items-panel error with Retry; does not report add as failed.**
 - `POST /api/customers/{customerId}/wardrobe/collections/{id}/items` — **runtime-verified**: HTTP 204, empty body. Add persisted (itemCount updated, coverImageUrl appeared in subsequent collection list). **Duplicate productId → HTTP 204 (idempotent in tested deployment; itemCount unchanged).** `addCollectionItem` returns `Promise<void>`. No UUID returned. No client-side duplicate fabricated. No optimistic itemCount increment.
-- `DELETE /api/customers/{customerId}/wardrobe/collections/{id}/items/{itemId}` — **Swagger-only / runtime-blocked**. `itemId` unavailable because list-items after add returns 500. Adapter exists. Uses `itemId` not `productId`.
+- `DELETE /api/customers/{customerId}/wardrobe/collections/{id}/items/{itemId}` — **Swagger-only / runtime-blocked**. `itemId` unavailable because list-items after add returns 500. Adapter exists. Uses `itemId` not `productId`. Swagger-confirmed path: `.../items/{itemId}` (NOT `.../items/products/{productId}`).
 
 **customerId:** Always from authenticated Customer state. Never sent in request body.
 **Cache invalidation:** Collections list invalidated on create/rename/delete. Item list and collection list invalidated on add/remove item. Favorites and Saved Outfits NOT invalidated.
 **Error handling:** `rethrowApiError` preserves backend `code` and `message`. Falls back to generic message when no structured error body.
+
+**Item normalization (third batch):**
+- `normalizeCollectionItem` returns `null` for items missing `id` or `productId`; nulls are filtered from results.
+- `normalizePagedCollectionItems` throws `INVALID_ITEMS_RESPONSE` for unrecognized response shapes (e.g. `null` data).
+- `productImageUrl` (Swagger field name) or `primaryImageUrl` are both normalized to `primaryImageUrl`.
+
+**Add Product flow (third batch):**
+- Add Product uses the customer's Favorites list as source — no arbitrary productId input.
+- Favorites picker rendered with `role="listbox"` / `role="option"` items and loading/error/empty states.
+- `handleAddProduct` calls `addMutation.mutateAsync`; on success, shows "Product added successfully." and triggers `itemsQuery.refetch()`.
+- Post-add refetch 500 handled: success is preserved; amber warning "The product was added, but the collection items could not be loaded." shown with Retry.
+- Favorites NOT mutated. Favorites queries NOT invalidated.
+- Duplicate add (idempotent 204) treated as normal success.
 
 ---
 
