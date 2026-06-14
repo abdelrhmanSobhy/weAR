@@ -306,9 +306,8 @@ export const avatarApi = {
       `/api/customers/${customerId}/avatar/extract-from-image`,
       formData,
       {
-        headers: {
-          "Content-Type": undefined,
-        },
+        headers: { "Content-Type": undefined },
+        timeout: 90_000,
       },
     );
 
