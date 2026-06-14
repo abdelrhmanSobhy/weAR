@@ -10,6 +10,15 @@ type TryOnSessionResponse = Partial<TryOnSession> & {
   durationSeconds?: number | null;
 };
 
+type TryOnResultResponse = {
+  status?: string | null;
+  resultImageUrl?: string | null;
+  recommendedSize?: string | null;
+  sizeRecommendation?: string | null;
+  confidenceScore?: number | null;
+  durationSeconds?: number | null;
+};
+
 type TryOnSessionsPage = Partial<PaginatedCustomerResponse<TryOnSessionResponse>>;
 
 const normalizeTryOnSession = (session: TryOnSessionResponse): TryOnSession => ({
@@ -26,6 +35,22 @@ const normalizeTryOnSession = (session: TryOnSessionResponse): TryOnSession => (
   confidenceScore: session.confidenceScore ?? null,
   durationSeconds: session.durationSeconds ?? null,
   createdAt: session.createdAt ?? null,
+});
+
+const normalizeCreatedTryOn = (
+  payload: CreateTryOnSessionPayload,
+  result: TryOnResultResponse,
+): TryOnSession => ({
+  id: crypto.randomUUID?.() ?? `${payload.productId}-${Date.now()}`,
+  productId: payload.productId,
+  avatarId: payload.avatarId ?? null,
+  sessionType: payload.sessionType,
+  status: result.status ?? null,
+  resultImageUrl: result.resultImageUrl ?? null,
+  recommendedSize: result.recommendedSize ?? result.sizeRecommendation ?? null,
+  confidenceScore: result.confidenceScore ?? null,
+  durationSeconds: result.durationSeconds ?? null,
+  createdAt: new Date().toISOString(),
 });
 
 const normalizeTryOnPage = (payload: TryOnSessionResponse[] | TryOnSessionsPage) => {
@@ -45,7 +70,7 @@ const normalizeTryOnPage = (payload: TryOnSessionResponse[] | TryOnSessionsPage)
 export const tryOnApi = {
   createSession: async (customerId: string, payload: CreateTryOnSessionPayload): Promise<TryOnSession> => {
     const response = await apiClient.post(`/api/customers/${customerId}/try-on`, payload);
-    return normalizeTryOnSession(unwrapCustomerApiData<TryOnSessionResponse>(response.data));
+    return normalizeCreatedTryOn(payload, unwrapCustomerApiData<TryOnResultResponse>(response.data));
   },
   listSessions: async (customerId: string, signal?: AbortSignal): Promise<TryOnSession[] | PaginatedCustomerResponse<TryOnSession>> => {
     const response = await apiClient.get(`/api/customers/${customerId}/try-on/sessions`, { signal });
