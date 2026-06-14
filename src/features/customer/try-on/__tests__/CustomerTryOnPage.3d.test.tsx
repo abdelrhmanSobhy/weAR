@@ -4,6 +4,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { CustomerTryOnPage } from "@/features/customer/try-on/pages/CustomerTryOnPage";
 import { useCartStore } from "@/features/customer/cart/useCartStore";
+import { TRY_ON_SESSION_TYPES } from "@/features/customer/try-on/types/tryOn";
 
 const viewerLoad = vi.fn();
 const mutate = vi.fn();
@@ -34,9 +35,9 @@ vi.mock("@/features/customer/try-on/hooks/tryOn.queries", () => ({
   useCreateTryOnSession: () => ({ isPending: false, mutate }),
 }));
 
-const renderCompletedPage = async (modelUrl: unknown) => {
-  session = { id: "s1", productId: "p1", sessionType: 0, resultImageUrl: "https://cdn.example.test/result.png", result3dModelUrl: modelUrl };
-  (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl = modelUrl as string | null;
+const renderCompletedPage = async (resultModelUrl: unknown) => {
+  (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl = "https://cdn.example.test/avatar.glb";
+  session = { id: "s1", productId: "p1", sessionType: TRY_ON_SESSION_TYPES.model3D, resultImageUrl: resultModelUrl, recommendedSize: "M" };
   mutate.mockImplementation((_payload, opts) => opts.onSuccess(session));
   render(<MemoryRouter initialEntries={["/customer/try-on/p1"]}><Routes><Route path="/customer/try-on/:productId" element={<CustomerTryOnPage />} /></Routes></MemoryRouter>);
   fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
@@ -44,7 +45,7 @@ const renderCompletedPage = async (modelUrl: unknown) => {
   fireEvent.click(screen.getByRole("button", { name: "M" }));
   fireEvent.click(screen.getByRole("button", { name: "Taupe" }));
   fireEvent.click(screen.getByRole("button", { name: /try product/i }));
-  await screen.findByText(/2D result complete/i);
+  await screen.findByText(/3D try-on complete|Session complete/i);
 };
 
 const renderTryOnPage = (entry = "/customer/try-on") => {
@@ -53,6 +54,7 @@ const renderTryOnPage = (entry = "/customer/try-on") => {
       <Routes>
         <Route path="/customer/try-on" element={<CustomerTryOnPage />} />
         <Route path="/customer/try-on/:productId" element={<CustomerTryOnPage />} />
+        <Route path="/customer/avatar/photo" element={<div>Photo avatar route</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -67,47 +69,51 @@ beforeEach(() => {
   (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl = null;
 });
 
-describe("CustomerTryOnPage progressive 3D result", () => {
-  it("keeps 2D as default and hides 3D for null or empty model URLs", async () => {
-    await renderCompletedPage(null);
-    expect(screen.getByRole("tabpanel", { name: /2D try-on result/i })).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: /3D View/i })).not.toBeInTheDocument();
-    expect(viewerLoad).not.toHaveBeenCalled();
+describe("CustomerTryOnPage 3D backend result", () => {
+  it("redirects to photo avatar flow when no safe 3D avatar model is available", async () => {
+    renderTryOnPage("/customer/try-on/p1");
+    fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
+    expect(await screen.findByText(/Photo avatar route/i)).toBeInTheDocument();
+    expect(mutate).not.toHaveBeenCalled();
   });
 
-  it("hides 3D for empty and unsafe URLs", async () => {
-    await renderCompletedPage("javascript:alert(1)");
-    expect(screen.queryByRole("tab", { name: /3D View/i })).not.toBeInTheDocument();
+  it("redirects to photo avatar flow for unsafe avatar URLs", async () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl = "javascript:alert(1)";
+    renderTryOnPage("/customer/try-on/p1");
+    fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
+    expect(await screen.findByText(/Photo avatar route/i)).toBeInTheDocument();
+    expect(mutate).not.toHaveBeenCalled();
   });
 
-  it("enables valid HTTPS 3D URL and lazy-loads viewer only after selecting 3D", async () => {
+  it("renders valid HTTPS 3D result immediately from backend resultImageUrl", async () => {
     await renderCompletedPage("https://cdn.example.test/result.glb");
-    expect(screen.getByRole("tab", { name: /2D View/i })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: /3D View/i })).toBeInTheDocument();
-    expect(viewerLoad).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("tab", { name: /3D View/i }));
+    expect(screen.getByRole("tab", { name: /3D Result/i })).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByTestId("mock-3d-viewer")).toBeInTheDocument();
     await waitFor(() => expect(viewerLoad).toHaveBeenCalledTimes(1));
   });
 
-  it("allows valid HTTP URL according to policy", async () => {
+  it("allows valid HTTP result URLs according to model URL policy", async () => {
     await renderCompletedPage("http://cdn.example.test/result.glb");
-    expect(screen.getByRole("tab", { name: /3D View/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /3D Result/i })).toBeInTheDocument();
   });
 
-  it("viewer failure preserves 2D result and retry does not create a new session", async () => {
+  it("falls back to product image when backend does not return a safe 3D result URL", async () => {
+    await renderCompletedPage(null);
+    expect(screen.getByRole("tabpanel", { name: /Product image fallback/i })).toBeInTheDocument();
+    expect(screen.getByText(/backend did not return a 3D result URL/i)).toBeInTheDocument();
+  });
+
+  it("viewer failure preserves the completed session and retry does not create a new session", async () => {
     (globalThis as { failViewer?: boolean }).failViewer = true;
     await renderCompletedPage("https://cdn.example.test/result.glb");
-    fireEvent.click(screen.getByRole("tab", { name: /3D View/i }));
     expect(await screen.findByText(/3D view is unavailable/i)).toBeInTheDocument();
     expect(screen.getByText(/Linen Jacket · Size M · Taupe/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Retry 3D/i }));
     expect(mutate).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("tab", { name: /2D View/i }));
-    expect(screen.getByText(/Linen Jacket · Size M · Taupe/i)).toBeInTheDocument();
   });
 
-  it("keeps /customer/try-on without a product as a valid no-product state", async () => {
+  it("keeps /customer/try-on without a product as a valid no-product state when a 3D avatar exists", async () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl = "https://cdn.example.test/avatar.glb";
     renderTryOnPage();
 
     fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
@@ -121,7 +127,7 @@ describe("CustomerTryOnPage progressive 3D result", () => {
     await renderCompletedPage("https://cdn.example.test/result.glb");
 
     expect(mutate).toHaveBeenCalledWith(
-      { productId: "p1", sessionType: 0, avatarId: "a1" },
+      { productId: "p1", sessionType: TRY_ON_SESSION_TYPES.model3D, avatarId: "a1" },
       expect.any(Object),
     );
     expect(screen.getByText(/Linen Jacket · Size M · Taupe/i)).toBeInTheDocument();
@@ -130,7 +136,7 @@ describe("CustomerTryOnPage progressive 3D result", () => {
   it("keeps Add to Cart available beside 3D controls without breaking the viewer", async () => {
     await renderCompletedPage("https://cdn.example.test/result.glb");
 
-    expect(screen.getByRole("tab", { name: /3D View/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /3D Result/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Add Linen Jacket to cart/i }));
 
     expect(useCartStore.getState().items).toEqual([
@@ -138,12 +144,9 @@ describe("CustomerTryOnPage progressive 3D result", () => {
         productId: "p1",
         selectedSize: "M",
         selectedColor: "Taupe",
-        tryOnResultImage: "https://cdn.example.test/result.png",
       }),
     ]);
     expect(screen.getByRole("status")).toHaveTextContent(/Added to cart: Linen Jacket/i);
-
-    fireEvent.click(screen.getByRole("tab", { name: /3D View/i }));
     expect(await screen.findByTestId("mock-3d-viewer")).toBeInTheDocument();
   });
 });
