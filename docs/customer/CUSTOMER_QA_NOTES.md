@@ -5,7 +5,7 @@
 ### Baseline
 
 - `npm ci`, lint, build and diff check passed.
-- `npm test`: 43 files, 238 tests passed.
+- `npm test` before Command 19: 43 files, 241 tests passed.
 
 ### Saved Outfits local deployed verification
 
@@ -89,6 +89,188 @@ Current limitations:
 - Outfits list is invalidated after create and after delete.
 - Favorites queries are invalidated when favorite toggle is performed from within the outfits flow.
 - All 42 new outfit tests pass (8 API adapter, 16 query hook, 18 page UI).
+
+## Command 19 AI Outfit Suggestions (2026-06-14)
+
+### Implementation basis
+
+Swagger-only — not deployed-verified (CONNECT tunnel returns 403 from this environment).
+
+### Response shapes supported
+
+| Shape | Description |
+|---|---|
+| `{ success: true, data: { suggestions: [...] } }` | Documented Swagger envelope (primary) |
+| `{ success: true, data: [...] }` | Legacy/direct-array compatibility |
+
+Field aliases normalized:
+- `id` or `suggestionId` → `suggestionId`
+- `outfitName` or `name` → `name`
+- `styleNotes` → `styleNotes`
+- `styleCategory` → `styleCategory` when present
+- `products[].reasoning` → `reasoning`
+
+### Save response validation
+
+- Accepted: wrapped `{ data: "uuid" }` or bare string.
+- Rejected with `SuggestionApiError("INVALID_SAVE_RESPONSE", ...)`: missing data, object data, empty string.
+- `String(raw)` not used — invalid response throws rather than coercing.
+
+### Save eligibility rule
+
+Save is disabled unless all of the following are true:
+- `suggestionId` present
+- At least one product in suggestion
+- Every product has a resolved `productId`
+- Every product has a numeric `slotType`
+
+Partial-outfit save (filtering unresolved products) is explicitly not implemented. If any product is unresolved or missing `slotType`, save is disabled with a clear message.
+
+Items are built from ALL products in original array order using:
+- `displayOrder` from backend when valid (numeric)
+- Original array index otherwise (for `displayOrder` only; `slotType` from backend always used, never substituted with index)
+
+### INVALID_OUTFIT_ITEMS handling
+
+When the backend returns `INVALID_OUTFIT_ITEMS` on save:
+- Explicit guidance is shown: "Products must be in Favorites first."
+- Link to `/customer/favorites` is provided.
+- No automatic Favorites mutation is performed.
+
+### Generate form constraints
+
+- Submit disabled when all inputs (occasion, stylePreferences, productIds) are empty after trim.
+- Empty body not submitted to backend.
+- stylePreferences and productIds trimmed and deduplicated before sending.
+- Form values preserved after generation failure.
+
+### Runtime verification: weatherCondition required
+
+Real deployed-backend test result (2026-06-14):
+
+```
+POST /api/customer/wardrobe/suggestions  (body without weatherCondition)
+HTTP 400
+{
+  "errors": {
+    "WeatherCondition": ["The WeatherCondition field is required."]
+  }
+}
+```
+
+This overrides the earlier Swagger-only assumption that all generation fields are optional.  
+`weatherCondition` (string) is now confirmed required by ASP.NET model validation.
+
+### Runtime verification: generate success response (2026-06-14)
+
+Real deployed-backend successful response (2026-06-14):
+
+```
+POST /api/customer/wardrobe/suggestions  { weatherCondition: "Clear" }
+HTTP 200
+{
+  "success": true,
+  "data": [
+    {
+      "title": "Casual Chic",
+      "description": "Perfect for a clear day.",
+      "matchPercentage": 95,
+      "styleTags": ["Comfortable","Versatile","Timeless"],
+      "items": []
+    }
+  ]
+}
+```
+
+Observed differences from Swagger:
+- `data` is a direct array, not `{ suggestions: [...] }`.
+- Fields use `title` (not `name`/`outfitName`), `description` (not `styleNotes`), `items` (not `products`).
+- `matchPercentage` and `styleTags` present (Swagger-undocumented).
+- No `id`/`suggestionId` field in response — `suggestionId` is `null` after normalization.
+- `items` array was empty in the tested call; product-level fields remain Swagger-only.
+
+Frontend adapter changes applied:
+- `title` → `name` (highest-priority alias)
+- `description` → `styleNotes` (highest-priority alias)
+- `items` → `products` (accepted alongside `raw.products`)
+- `matchPercentage` preserved as `number | null`
+- `styleTags` preserved as `string[] | null`
+- Missing `id`/`suggestionId` no longer drops suggestion; `suggestionId` is `string | null`
+- Save disabled when `suggestionId` is null (no synthetic ID invented)
+
+### Runtime verification: generate with productIds — item fields (2026-06-14)
+
+Second runtime test with `productIds` payload returned populated `items`:
+
+```
+POST /api/customer/wardrobe/suggestions  { weatherCondition: "Clear", productIds: ["cccccccc-..."] }
+HTTP 200
+{
+  "success": true,
+  "data": [
+    {
+      "title": "Casual Chic",
+      "description": "Perfect for a clear day.",
+      "matchPercentage": 95,
+      "styleTags": ["Comfortable","Versatile","Timeless"],
+      "items": [
+        {
+          "id": "25e38c13-76ad-44a6-9b5d-edfe2d23c91d",
+          "productId": "cccccccc-cccc-cccc-cccc-cccc00000002",
+          "slot": "Top",
+          "displayOrder": 0,
+          "productName": "002 - women's short-sleeve, boat-neck blouse...",
+          "price": 49.99,
+          "primaryImageUrl": "https://res.cloudinary.com/...jpg",
+          "stockStatus": "In Stock"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Verified item-level fields:
+- `id` (item UUID)
+- `productId` (product UUID)
+- `slot` (string — display-only; no numeric `slotType` present)
+- `displayOrder` (number)
+- `productName` → normalized to `name`
+- `price` (number)
+- `primaryImageUrl` (string)
+- `stockStatus` (string)
+
+Behavioral observations:
+- Request sent two `productIds`; backend returned one item. This is not a frontend error — only returned items are rendered.
+- `suggestionId` still absent in response — save remains safely blocked.
+- `slotType` still absent — `slot` string is display-only and is never coerced to a numeric slotType.
+- `POST /api/customer/wardrobe/suggestions/save` remains untested.
+
+Frontend adapter changes applied:
+- `productName` → `name` (highest-priority alias for item name)
+- `slot` preserved as `string | null` (display-only)
+- `price`, `primaryImageUrl`, `stockStatus` preserved from item
+- `item.id` preserved as `AiSuggestionProduct.id`
+- `slotType` remains `null` when absent — no enum mapping invented
+- Product display uses embedded item fields; no second product lookup required
+
+Status:
+- Request validation: **runtime-verified** (`weatherCondition` required)
+- Generate success response: **runtime-verified** (both empty-items and populated-items shapes)
+- Item-level fields: **runtime-verified** (`id`, `productId`, `slot`, `displayOrder`, `productName`, `price`, `primaryImageUrl`, `stockStatus`)
+- Save endpoint: **Swagger-only** (save blocked — no `suggestionId` or numeric `slotType` in verified responses)
+
+### Unconfirmed (documented, not guessed)
+
+- Whether `suggestionId` is ever returned by generate (not observed in any runtime test).
+- Whether `slotType` (numeric) is ever returned by generate (not observed; `slot` string is).
+- Whether Favorites prerequisite applies to save (INVALID_OUTFIT_ITEMS possible).
+
+### Test baseline after Command 19 (final)
+
+`npm test`: 46 files, 329 tests passed.
+
+---
 
 ## Wardrobe Contract Audit (2026-06-13)
 

@@ -49,12 +49,20 @@ Confirmed defects:
 
 The frontend implements list/create/delete and does not expose fake detail/edit behavior.
 
-## AI Outfit Suggestions (Swagger-only, Command 19)
+## AI Outfit Suggestions (Command 19 — runtime-verified generate, save Swagger-only)
 
-- Generate: `POST /api/customer/wardrobe/suggestions` — body fields (occasion, stylePreferences, favoriteProductIds, modelIds, productIds) all optional/nullable; response contains suggestions array with products per suggestion.
-- Save: `POST /api/customer/wardrobe/suggestions/save` — body requires `suggestionId` (uuid), optional `name`/`styleCategory`, and `items[]` with `productId`/`slotType`/`displayOrder`; expected 201 with UUID string in `data`.
-- Model ID resolution: `POST /api/catalog/products/by-model-ids` — adapter already exists; call only when suggestion response products contain `modelId` without `productId`.
-- Unconfirmed: whether any request field is required; whether Favorites prerequisite applies to save.
+- Generate: `POST /api/customer/wardrobe/suggestions` — **runtime-verified** (2026-06-14).
+  - `weatherCondition` (string) confirmed required: HTTP 400 `errors.WeatherCondition` when omitted.
+  - Deployed success response (two runtime tests, 2026-06-14): `{ "success": true, "data": [ { "title": "...", "description": "...", "matchPercentage": 95, "styleTags": [...], "items": [...] } ] }`.
+  - Top-level fields confirmed: `title` (not `name`/`outfitName`), `description` (not `styleNotes`), `matchPercentage`, `styleTags`, `items` (not `products`). No `id`/`suggestionId`.
+  - Item-level fields confirmed: `id`, `productId`, `slot` (string — "Top"; no numeric `slotType`), `displayOrder`, `productName`, `price`, `primaryImageUrl`, `stockStatus`.
+  - Backend may return a subset of requested `productIds`; not a frontend error.
+  - Adapter normalizes: `title`→`name`, `description`→`styleNotes`, `items`/`products`→`products`, `productName`→`name` (item), `slot` preserved display-only, embedded display fields preserved; no second product lookup needed.
+  - Missing `suggestionId` does NOT drop the suggestion; `AiSuggestion.suggestionId` is `string | null`.
+  - `slot` string is never coerced to numeric `slotType`; no enum mapping invented.
+- Save: `POST /api/customer/wardrobe/suggestions/save` — **Swagger-only** (not deployed-verified; save blocked because tested generate response contained no `suggestionId`). Requires `suggestionId`, `items[]` with `productId`/`slotType`/`displayOrder`; 201 with UUID string in `data`. Strict response validation. All products must be resolved before save is permitted.
+- Model ID resolution: `POST /api/catalog/products/by-model-ids` — adapter exists; called only when suggestion products have `modelId` without `productId`.
+- INVALID_OUTFIT_ITEMS: handled with explicit guidance and link to Favorites; no automatic Favorites mutation.
 
 ## Wardrobe Collections (Swagger-only, Command 20)
 

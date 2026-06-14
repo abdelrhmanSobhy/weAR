@@ -149,17 +149,51 @@ git diff --check
 Create a PR to customer/final-qa and stop after the report.
 ```
 
-## Command 19 — AI Outfit Suggestions and saving — P1/P2
+## Command 19 — AI Outfit Suggestions and saving — P1/P2 — COMPLETE
 
 ```text
-Create customer/ai-outfit-suggestions from the latest approved continuation base.
+Implemented on branch claude/tender-goodall-hv68c3, PR #24, base customer/ai-outfit-suggestions.
 
-Use only Swagger-confirmed endpoints:
-- POST /api/customer/wardrobe/suggestions
-- POST /api/customer/wardrobe/suggestions/save
-- POST /api/catalog/products/by-model-ids only when model IDs require resolution
+Endpoints integrated:
+- POST /api/customer/wardrobe/suggestions — runtime-verified (generate)
+- POST /api/customer/wardrobe/suggestions/save — Swagger-only (save blocked; see below)
+- POST /api/catalog/products/by-model-ids (conditional — only when modelId present without productId)
 
-Derive Customer identity from auth. Reuse Favorites/catalog primitives. Implement loading, error, empty and success states. Never fabricate AI output or save success. If the schema is ambiguous, document the blocker instead of guessing. Add adapter, normalization, query and page tests. Run full checks and create a PR.
+Response normalization (three shapes supported):
+A. Verified deployed (2026-06-14): data is a direct array; items use title/description/items/matchPercentage/styleTags; no suggestionId.
+B. Swagger: data.suggestions envelope.
+C. Legacy: data as direct array with Swagger field names.
+- Aliases: title/outfitName/name → name; description/styleNotes → styleNotes; items/products → products.
+- matchPercentage (number | null) and styleTags (string[] | null) preserved.
+- suggestionId: string | null — missing ID does not drop suggestion; no synthetic ID invented.
+
+Save constraints enforced:
+- All products must have resolved productId and numeric slotType.
+- Partial-outfit save not permitted.
+- Save disabled when suggestionId is null.
+- INVALID_OUTFIT_ITEMS handled with explicit guidance and link to Favorites; no auto-mutation.
+- Strict save response: only non-empty string accepted; throws SuggestionApiError otherwise.
+
+UI:
+- Generate disabled when weatherCondition empty (runtime-verified required field).
+- matchPercentage and styleTags rendered when present.
+- Loading, error, empty, success states.
+- Link to /customer/outfits after save success.
+- Form values preserved on generation failure.
+
+Runtime-verified (2026-06-14 — two tests):
+- weatherCondition required — HTTP 400 when omitted.
+- Generate response shape: { success:true, data:[{ title, description, matchPercentage, styleTags, items:[...] }] }.
+- Item fields confirmed: id, productId, slot (string "Top"), displayOrder, productName, price, primaryImageUrl, stockStatus.
+- No suggestionId in any tested response → save blocked safely.
+- No numeric slotType in any tested response → slot string is display-only, not coerced.
+- Backend returned one item when two productIds were requested (subset — not a frontend error).
+
+Runtime-unconfirmed (documented as blockers):
+- Whether suggestionId is ever returned by generate (not observed).
+- Whether numeric slotType is ever returned by generate (not observed).
+- Save endpoint behavior (requires suggestionId and numeric slotType; neither observed in runtime).
+- Whether Favorites prerequisite applies to save.
 ```
 
 ## Command 20 — Wardrobe Collections — P2

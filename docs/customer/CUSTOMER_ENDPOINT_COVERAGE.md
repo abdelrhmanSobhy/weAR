@@ -83,9 +83,9 @@ Toggle, list and check endpoints are **Verified UI used**. Saved Outfits uses ex
 
 | Endpoint | Status | Notes |
 |---|---|---|
-| `POST /api/customer/wardrobe/suggestions` | Not integrated | Command 19. Swagger-only. Request fields all optional/nullable; confirm whether empty body is valid. |
-| `POST /api/customer/wardrobe/suggestions/save` | Not integrated | Command 19. Swagger-only. `suggestionId` required; Favorites prerequisite unconfirmed. |
-| `POST /api/catalog/products/by-model-ids` | Adapter only | Adapter implemented. Use only when suggestion response contains `modelId` without `productId`. |
+| `POST /api/customer/wardrobe/suggestions` | Complete supported scope — runtime-verified | `weatherCondition` required (HTTP 400 confirmed). Generate response runtime-verified (two tests, 2026-06-14): `data` direct array; `title`/`description`/`matchPercentage`/`styleTags`/`items` confirmed. Item fields runtime-verified: `id`, `productId`, `slot` (string, display-only), `displayOrder`, `productName`, `price`, `primaryImageUrl`, `stockStatus`. No `suggestionId` or numeric `slotType` in any tested response. Backend may return a subset of requested `productIds`. Adapter normalizes three response shapes. `suggestionId: string \| null`; save disabled when null. Embedded item fields rendered without a second product lookup. |
+| `POST /api/customer/wardrobe/suggestions/save` | Complete supported scope — Swagger-only | Strict non-empty string response required; throws `SuggestionApiError` on invalid response. All products must be resolved with valid productId and slotType before save is enabled. Favorites prerequisite (INVALID_OUTFIT_ITEMS) handled with explicit UI guidance; no automatic Favorites mutation. Not deployed-verified. |
+| `POST /api/catalog/products/by-model-ids` | Adapter only — conditional | Called only when suggestion response products have no productId but have a modelId. Skipped when all products already carry productId. |
 
 ## Wardrobe Collections
 
