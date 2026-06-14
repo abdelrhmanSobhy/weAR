@@ -4,12 +4,12 @@
 
 - **Branch**: `claude/sweet-goodall-8gio6o` (tracking `origin/customer/final-qa`)
 - **Starting commit**: `678abcd9507b6b9a8707467a58c80bc7d75911dc`
-- **HEAD at audit time**: `cc97946d37ad7a83d68737219f01289c3437c7a0`
+- **HEAD at audit time**: `678abcd9507b6b9a8707467a58c80bc7d75911dc`
 - **npm ci**: passed (17 vulnerabilities flagged — 4 moderate, 12 high, 1 critical)
-- **lint**: ESLint runs but reports 3 errors (missing `jsx-a11y/anchor-has-content` and `react-hooks/*` plugin rule definitions) plus 1 spurious warning — these are linter config issues in the worktree `.vite/deps` cache file, NOT in `src/`
+- **lint**: FAIL — `npm run lint` fails with `Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@eslint/js'`. ESLint 10.1.0 references `@eslint/js` in `eslint.config.js` but it is absent from `node_modules` after a clean `npm ci`. This is a pre-existing condition not introduced by this branch. No lint gate is currently operational.
 - **build**: `vite build` succeeds; 2 chunks exceed 500 kB warning threshold: `TryOn3DViewer-*.js` (1,039 kB gzip 297 kB) and `index-*.js` (1,362 kB gzip 387 kB)
-- **tests**: 56 test files run; **1 file failed** (`RequireRole.test.tsx` — unhandled rejection from react-router navigation in guard tests, unrelated to customer feature code); 437/438 tests pass
-- **Customer test files**: 40 files in `src/features/customer/**`
+- **tests (full suite)**: 56 test files run; **1 file failed** (`RequireRole.test.tsx` — unhandled rejection from react-router navigation in guard tests, pre-existing and unrelated to customer feature code); 437/438 tests pass
+- **tests (customer only)**: **40 files / 403 tests, all pass**
 - **git diff --check**: clean (no whitespace errors)
 - **npm audit summary**: 17 vulnerabilities total
   - 1 critical: `vitest >=4.0.0 <4.1.0` — arbitrary file read/execute via Vitest UI (dev-only, no production exposure)
@@ -219,7 +219,7 @@ Example: `tryOn.queries.test.tsx` line 17 creates a raw `QueryClient`; `CartPage
 
 **Priority**: P0 (for production dependencies) / P2 (for dev-only)
 **Area**: Security / Dependencies
-**Evidence** (from `npm audit`):
+**Evidence** (from `npm audit` — read-only, no `npm audit fix` run):
 
 **Critical (dev-only)**:
 - `vitest >=4.0.0 <4.1.0`: arbitrary file read/execute via Vitest UI server. No production exposure since vitest is a devDependency and the UI server is not run in CI/CD.
@@ -244,6 +244,26 @@ All 17 are fixable via `npm audit fix` (no breaking changes flagged). `react-rou
 **Dependencies**: None; should be a standalone dependency-bump PR.
 
 **Should be done before main merge?** **Yes** for `react-router` (production RCE/XSS). Acceptable to batch all others in the same PR.
+
+---
+
+### TD-010 — ESLint completely broken (`@eslint/js` missing)
+
+**Priority**: P0
+**Area**: Tooling / CI
+**Evidence**: `npm run lint` exits with code 2 and the error:
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@eslint/js' imported from /home/user/weAR/eslint.config.js
+```
+`@eslint/js` is referenced in `eslint.config.js` but not present in `node_modules` after a fresh `npm ci`. This is a pre-existing misconfiguration not introduced by this branch.
+
+**Risk**: No automated code quality gate exists. Any CI pipeline that runs `npm run lint` will fail on every PR, making the linter gate a CI no-op or a constant red build.
+
+**Recommended action**: Add `@eslint/js` to `devDependencies` in `package.json` with the version matching ESLint 10.1.0 compatibility (`^9.0.0`). Run `npm install` and verify `eslint .` passes on `src/`.
+
+**Dependencies**: None.
+
+**Should be done before main merge?** **Yes** — a broken lint command means no code quality enforcement in CI.
 
 ---
 
@@ -303,3 +323,4 @@ All other findings are either P2/P3 (quality, maintainability) or dev-only conce
 | TD-007 Documentation drift | P3 | No |
 | TD-008 Test helper duplication | P2 | No |
 | TD-009 npm audit vulnerabilities | **P0** | **Yes (react-router CVEs)** |
+| TD-010 ESLint broken (`@eslint/js` missing) | **P0** | **Yes (no lint gate in CI)** |
