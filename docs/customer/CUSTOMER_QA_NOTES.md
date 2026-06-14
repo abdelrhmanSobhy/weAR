@@ -1,5 +1,97 @@
 # Customer Frontend QA Notes
 
+## Command 20 — Runtime Verification Results (2026-06-14)
+
+### Wardrobe Collections — runtime-verified facts
+
+The following facts were verified against the deployed backend (`https://vfr-backend.onrender.com`) on 2026-06-14:
+
+| Endpoint | Method | Runtime result |
+|---|---|---|
+| List collections | GET | HTTP 200, `response.data` is a **direct array** (NOT paginated envelope); after add reflects `itemCount:1` and `coverImageUrl` |
+| Create collection | POST | HTTP 201, `response.data` is UUID string |
+| Create — duplicate name | POST | **HTTP 409 `CONFLICT`** — message preserved; form stays open, values preserved |
+| Rename collection | PATCH `{ newName }` | HTTP 204, empty body. PUT returns **405 Method Not Allowed** |
+| Rename — blank newName | PATCH | **HTTP 422 `InvalidName`** — `"Collection name must not be empty."`; dialog stays open, input preserved |
+| Delete collection | DELETE | **HTTP 204, verified by subsequent GET (empty array)** |
+| List items (empty collection) | GET | HTTP 200 with paginated `data.items` envelope (empty) |
+| Add item | POST | HTTP 204, empty body (no UUID returned). Add persisted — itemCount updated in collection list |
+| Add item — duplicate productId | POST | **HTTP 204 (idempotent in tested deployment)** — itemCount unchanged; no client-side duplicate fabricated |
+| List items after add | GET | **HTTP 500 INTERNAL_ERROR** — backend read defect. Add itself succeeded. UI shows error/retry; does not report add as failed |
+| Remove item | DELETE | **Runtime-blocked** — `itemId` unavailable without working list-items |
+
+### Frontend alignment actions taken (first batch)
+
+- `normalizePagedCollections`: primary path handles direct array; synthesizes pagination metadata; throws `INVALID_LIST_RESPONSE` for unrecognized shape.
+- `renameCollection` uses PATCH with `{ newName }` body only (was PUT with `{ name, description }`).
+- `addCollectionItem` returns `Promise<void>` and does not parse response body.
+- `useRenameWardrobeCollection` query hook updated; `useUpdateWardrobeCollection` removed.
+- `UpdateWardrobeCollectionPayload` type removed (was dead export).
+- Test files updated to reflect runtime-aligned contracts.
+
+### Frontend alignment actions taken (second batch — 2026-06-14)
+
+- Create form: CONFLICT (409) renders backend message; form stays open; values preserved; collection list NOT invalidated on conflict.
+- Rename inline dialog: backend error message (e.g. `InvalidName` 422) now displayed instead of generic fallback.
+- Rename: whitespace-only names blocked client-side before request; Save button disabled.
+- Dead `RenameCollectionForm` component (never rendered) removed.
+- API adapter JSDoc updated with second-batch runtime facts.
+- `coverImageUrl` rendered in collection card when returned by refreshed list.
+- No optimistic itemCount increment; server value authoritative via invalidation/refetch.
+- Tests 56–62 added covering CONFLICT, InvalidName, coverImageUrl, and idempotent add.
+
+### Frontend alignment actions taken (third batch — 2026-06-14, final)
+
+- Add Product flow: Favorites-backed picker (`role="listbox"` / `role="option"`) with loading/error/empty states.
+- Post-add 500 handled: success preserved; amber warning shown with Retry when items refetch fails.
+- Favorites NOT mutated; Favorites queries NOT invalidated.
+- `normalizeCollectionItem` returns `null` for items missing `id` or `productId`; nulls filtered.
+- `normalizePagedCollectionItems` throws `INVALID_ITEMS_RESPONSE` for unrecognized shapes.
+- Remove item route confirmed against Swagger: `DELETE .../items/{itemId}` (NOT `.../items/products/{productId}`).
+- Tests 63–74 added covering Add Product flow, malformed item filtering, INVALID_ITEMS_RESPONSE.
+
+---
+
+## Command 20 — Wardrobe Collections (2026-06-14)
+
+### Baseline before Command 20
+
+- `npm test` before Command 20: 48 files, 373 tests passed.
+
+### Command 20 implementation (2026-06-14)
+
+- Branch: `claude/vigilant-rubin-29ob7b`.
+- `npm ci` passed.
+- `npm run build` passed (chunk size warnings pre-existing).
+- `npm test` after Command 20 (final): **49 files, 423 tests passed** (50 new test cases: api tests 1–31, queries tests 32–44, page tests 45–74 across 3 new test files).
+  - Phase 1 (Swagger-only): tests 1–55 (384 total).
+  - Phase 2 (runtime-alignment batch 1): tests 56–62 (CONFLICT, InvalidName, coverImageUrl, idempotent add).
+  - Phase 3 (runtime-alignment batch 2 + add-product flow): tests 63–74 (Add Product flow, malformed item filtering, INVALID_ITEMS_RESPONSE).
+- `git diff --check` passed.
+- No merge conflicts.
+
+### Wardrobe Collections backend status
+
+- Core collection operations (list, create, rename, delete) and add item are **runtime-verified** (2026-06-14).
+- List: HTTP 200, `data` is a direct array; refreshed after add shows `itemCount:1` and `coverImageUrl`.
+- Create: HTTP 201, `data` is UUID string. Duplicate name → HTTP 409 CONFLICT (runtime-verified).
+- Rename: PATCH `{ newName }` → HTTP 204. PUT → 405. Blank newName → HTTP 422 InvalidName (runtime-verified).
+- Delete: **HTTP 204 (runtime-verified); subsequent GET confirmed empty list.**
+- Add item: HTTP 204, empty body. Persisted. Duplicate productId → 204 (idempotent in tested deployment).
+- List items after add: HTTP 500 INTERNAL_ERROR (backend defect; add succeeded).
+- Remove item: Swagger-only / runtime-blocked (`itemId` unavailable without working list-items).
+- customerId sourced exclusively from authenticated state; never from request body.
+- Does NOT invalidate Favorites or Saved Outfits caches.
+- Command 20 status: **"Core collection operations, rename, and add item are runtime-aligned and runtime-verified. Post-add item retrieval has a backend defect. Remove item remains Swagger-only/runtime-blocked."**
+
+### Route and nav added
+
+- Route: `/customer/wardrobe/collections` registered in `router.tsx`.
+- Route key `wardrobeCollections` added to `customerRoutes.ts`.
+- Navigation item: "Wardrobe" (FolderOpen icon) added between "AI Style" and "Favorites" in `CustomerLayout.tsx`.
+
+---
+
 ## Updated Swagger and local deployed verification (2026-06-14)
 
 ### Baseline

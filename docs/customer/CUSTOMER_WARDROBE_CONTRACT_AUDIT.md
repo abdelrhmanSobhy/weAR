@@ -2,10 +2,42 @@
 
 ## Audit scope and date
 
-**Date:** 2026-06-13 (audit); Command 19 implementation 2026-06-14  
-**Source precedence:** Verified deployed behavior → Current Swagger/OpenAPI → Backend integration guide → Repository docs  
-**Status of deployed tests:** CONNECT tunnel to `https://vfr-backend.onrender.com` returns 403 Forbidden from this execution environment. All endpoint entries below are **Swagger-only** unless explicitly marked **Verified deployed**.  
+**Date:** 2026-06-13 (audit); Command 19 implementation 2026-06-14
+**Source precedence:** Verified deployed behavior → Current Swagger/OpenAPI → Backend integration guide → Repository docs
+**Status of deployed tests:** CONNECT tunnel to `https://vfr-backend.onrender.com` returns 403 Forbidden from this execution environment. All endpoint entries below are **Swagger-only** unless explicitly marked **Verified deployed**.
 **Source documents read:** CUSTOMER_BACKEND_CONTRACT_SNAPSHOT.md, CUSTOMER_CONTINUATION_COMMANDS.md, CUSTOMER_ENDPOINT_COVERAGE.md, CUSTOMER_QA_NOTES.md, CUSTOMER_API_REFERENCE.md, catalog.api.ts, outfits.api.ts, catalog.ts types.
+
+## Command 20 implementation notes (runtime-aligned, 2026-06-14)
+
+Wardrobe Collections — **runtime-verified 2026-06-14**. CONNECT tunnel was accessible for runtime tests.
+
+**Implemented and runtime-verified (updated 2026-06-14 third batch — final):**
+- `GET /api/customers/{customerId}/wardrobe/collections` — **runtime-verified**: HTTP 200, `data` is a **direct array** (NOT paginated envelope). After add, refreshed list reflects `itemCount: 1` and `coverImageUrl`. Adapter normalizes with synthesized pagination. Filters entries with empty `id` or `name`. Throws `INVALID_LIST_RESPONSE` for unrecognized shapes.
+- `POST /api/customers/{customerId}/wardrobe/collections` — **runtime-verified**: HTTP 201; `data` is UUID string. Name trimmed; description nullable. Duplicate name → **HTTP 409 `CONFLICT`** (runtime-verified); message preserved; form stays open, values preserved. `WardrobeCollectionApiError` on error.
+- `PATCH /api/customers/{customerId}/wardrobe/collections/{id}` — **runtime-verified**: PATCH `{ newName }` → HTTP 204. PUT → 405. Blank `newName` → **HTTP 422 `InvalidName`** (runtime-verified); error displayed, form stays open, input preserved. No body parsing on success.
+- `DELETE /api/customers/{customerId}/wardrobe/collections/{id}` — **runtime-verified**: HTTP 204; no body. Subsequent GET confirmed removal (empty array). Selected collection cleared on delete. Item queries invalidated for deleted collection.
+- `GET /api/customers/{customerId}/wardrobe/collections/{id}/items` — **runtime-verified (empty case)**: HTTP 200 with paginated `data.items` envelope. Normalizes `WardrobeCollectionItem[]`. Handles `productImageUrl` (Swagger) or `primaryImageUrl`. **After add, GET items returns HTTP 500 INTERNAL_ERROR — backend read defect. Add itself succeeded and persisted (itemCount updated in collection list). UI shows items-panel error with Retry; does not report add as failed.**
+- `POST /api/customers/{customerId}/wardrobe/collections/{id}/items` — **runtime-verified**: HTTP 204, empty body. Add persisted (itemCount updated, coverImageUrl appeared in subsequent collection list). **Duplicate productId → HTTP 204 (idempotent in tested deployment; itemCount unchanged).** `addCollectionItem` returns `Promise<void>`. No UUID returned. No client-side duplicate fabricated. No optimistic itemCount increment.
+- `DELETE /api/customers/{customerId}/wardrobe/collections/{id}/items/{itemId}` — **Swagger-only / runtime-blocked**. `itemId` unavailable because list-items after add returns 500. Adapter exists. Uses `itemId` not `productId`. Swagger-confirmed path: `.../items/{itemId}` (NOT `.../items/products/{productId}`).
+
+**customerId:** Always from authenticated Customer state. Never sent in request body.
+**Cache invalidation:** Collections list invalidated on create/rename/delete. Item list and collection list invalidated on add/remove item. Favorites and Saved Outfits NOT invalidated.
+**Error handling:** `rethrowApiError` preserves backend `code` and `message`. Falls back to generic message when no structured error body.
+
+**Item normalization (third batch):**
+- `normalizeCollectionItem` returns `null` for items missing `id` or `productId`; nulls are filtered from results.
+- `normalizePagedCollectionItems` throws `INVALID_ITEMS_RESPONSE` for unrecognized response shapes (e.g. `null` data).
+- `productImageUrl` (Swagger field name) or `primaryImageUrl` are both normalized to `primaryImageUrl`.
+
+**Add Product flow (third batch):**
+- Add Product uses the customer's Favorites list as source — no arbitrary productId input.
+- Favorites picker rendered with `role="listbox"` / `role="option"` items and loading/error/empty states.
+- `handleAddProduct` calls `addMutation.mutateAsync`; on success, shows "Product added successfully." and triggers `itemsQuery.refetch()`.
+- Post-add refetch 500 handled: success is preserved; amber warning "The product was added, but the collection items could not be loaded." shown with Retry.
+- Favorites NOT mutated. Favorites queries NOT invalidated.
+- Duplicate add (idempotent 204) treated as normal success.
+
+---
 
 ## Command 19 implementation notes (updated 2026-06-14)
 
@@ -84,7 +116,7 @@ AI Outfit Suggestions — generate endpoint **runtime-verified** (two deployed t
 }
 ```
 
-Required fields: none confirmed mandatory from Swagger alone.  
+Required fields: none confirmed mandatory from Swagger alone.
 Nullable fields: all fields appear optional/nullable.
 
 **Input resolution notes:**
@@ -121,8 +153,8 @@ Nullable fields: all fields appear optional/nullable.
 }
 ```
 
-**Exact field names and whether `products[].modelId` or `products[].productId` is always populated is not confirmed.**  
-**Pagination:** Not expected on generation endpoint; single response.  
+**Exact field names and whether `products[].modelId` or `products[].productId` is always populated is not confirmed.**
+**Pagination:** Not expected on generation endpoint; single response.
 **Error responses (Swagger-derived):**
 
 | Status | Code | Condition |
@@ -170,7 +202,7 @@ Nullable fields: all fields appear optional/nullable.
 }
 ```
 
-Required fields: `suggestionId` required; `items[].productId` required; `items[].slotType` required (numeric enum, same shape as Saved Outfits).  
+Required fields: `suggestionId` required; `items[].productId` required; `items[].slotType` required (numeric enum, same shape as Saved Outfits).
 Nullable: `name`, `styleCategory`.
 
 **Blocker:** It is not confirmed whether `suggestionId` must reference an ID returned by the generate endpoint, or whether items must already be Customer Favorites (like the Saved Outfits `INVALID_OUTFIT_ITEMS` restriction). This must be clarified before implementation.
@@ -260,37 +292,29 @@ Response shape matches standard catalog product list. Adapter already exists (`g
 | **Path parameters** | `customerId: uuid` |
 | **Query parameters** | `pageNumber?: number`, `pageSize?: number` |
 | **Success status** | `200 OK` |
-| **Tested status** | **Swagger-only** |
+| **Tested status** | **Runtime-verified (2026-06-14)** |
 
-**Success response envelope (Swagger-derived):**
+**Runtime-verified response shape:**
 
 ```json
 {
   "success": true,
-  "data": {
-    "items": [
-      {
-        "id": "uuid",
-        "name": "string",
-        "description": "string | null",
-        "itemCount": 0,
-        "coverImageUrl": "string | null",
-        "createdAt": "string (ISO 8601)"
-      }
-    ],
-    "pageNumber": 1,
-    "pageSize": 10,
-    "totalCount": 0,
-    "totalPages": 0,
-    "hasPreviousPage": false,
-    "hasNextPage": false
-  }
+  "data": [
+    {
+      "id": "uuid",
+      "name": "string",
+      "description": "string | null",
+      "itemCount": 0,
+      "coverImageUrl": "string | null",
+      "createdAt": "string (ISO 8601)"
+    }
+  ]
 }
 ```
 
-**Pagination shape:** Standard paginated envelope (same shape as Outfits list, verified).  
-**Ownership:** customerId in path must match authenticated token.  
-**Safe to test:** Yes (read-only). Blocked by CONNECT tunnel.
+**`data` is a direct array (NOT a paginated envelope).** Adapter synthesizes pagination metadata: `pageNumber=1`, `pageSize=array.length`, `totalCount=array.length`, `totalPages=array.length>0?1:0`, `hasPreviousPage=false`, `hasNextPage=false`.
+Entries with empty `id` or `name` are filtered out.
+**Ownership:** customerId in path must match authenticated token.
 
 ---
 
@@ -316,7 +340,7 @@ Response shape matches standard catalog product list. Adapter already exists (`g
 }
 ```
 
-Required: `name`.  
+Required: `name`.
 Nullable: `description`.
 
 **Success response envelope (Swagger-derived):**
@@ -384,7 +408,7 @@ Nullable: `description`.
 | **Success status** | `204 No Content` |
 | **Tested status** | **Swagger-only** |
 
-**Success response:** Empty body; do not attempt JSON parsing (consistent with Outfit delete pattern).  
+**Success response:** Empty body; do not attempt JSON parsing (consistent with Outfit delete pattern).
 **Behavior:** Deleting a collection with items — whether items are removed or the operation is blocked — is not confirmed. Assume cascade delete unless documented otherwise.
 
 **Safe to test:** Yes (destructive but scoped to test data). Blocked by CONNECT tunnel.
@@ -428,7 +452,7 @@ Nullable: `description`.
 }
 ```
 
-**Exact field names for item shape (especially product snapshot fields) are not confirmed.**  
+**Exact field names for item shape (especially product snapshot fields) are not confirmed.**
 **Safe to test:** Yes (read-only). Blocked by CONNECT tunnel.
 
 ---
@@ -486,7 +510,7 @@ Required: `productId`.
 | **Success status** | `204 No Content` |
 | **Tested status** | **Swagger-only** |
 
-**Success response:** Empty body; do not attempt JSON parsing.  
+**Success response:** Empty body; do not attempt JSON parsing.
 **Safe to test:** Yes (destructive but scoped to test data). Blocked by CONNECT tunnel.
 
 ---
@@ -519,7 +543,7 @@ Required: `productId`.
 }
 ```
 
-Required: `orderId`, `orderItemId`, `productId`, `fitRating`, `overallRating`.  
+Required: `orderId`, `orderItemId`, `productId`, `fitRating`, `overallRating`.
 Nullable: `comment`.
 
 **Enum values:**
@@ -578,8 +602,8 @@ Nullable: `comment`.
 }
 ```
 
-**Exact response shape is not confirmed.**  
-**BLOCKER: Requires real `orderId`.**  
+**Exact response shape is not confirmed.**
+**BLOCKER: Requires real `orderId`.**
 **Safe to test:** NO — requires real order data.
 
 ---
@@ -612,8 +636,8 @@ Nullable: `comment`.
 }
 ```
 
-**Exact field names are not confirmed.**  
-**Path may be under `/api/customers/{customerId}/feedback/products/{productId}/statistics` instead.**  
+**Exact field names are not confirmed.**
+**Path may be under `/api/customers/{customerId}/feedback/products/{productId}/statistics` instead.**
 **Safe to test:** Possibly yes (read-only, no order required). Blocked by CONNECT tunnel.
 
 ---
