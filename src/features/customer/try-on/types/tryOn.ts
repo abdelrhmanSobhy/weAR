@@ -10,7 +10,7 @@ export type TryOnSessionType = (typeof TRY_ON_SESSION_TYPES)[keyof typeof TRY_ON
 
 export interface CreateTryOnSessionPayload {
   productId: string;
-  sessionType: (typeof TRY_ON_SESSION_TYPES)["overlay2D"];
+  sessionType: (typeof TRY_ON_SESSION_TYPES)[keyof typeof TRY_ON_SESSION_TYPES];
   avatarId?: string | null;
 }
 
@@ -79,7 +79,7 @@ export const initialTryOnFlowState = (productId: string | null, selections?: Par
 export const tryOnFlowReducer = (state: TryOnFlowState, action: TryOnFlowAction): TryOnFlowState => {
   switch (action.type) {
     case "ENTER_ROOM": return { ...state, status: "checking-avatar", errorMessage: null };
-    case "AVATAR_MISSING": return { ...state, status: "error-avatar-required", errorMessage: action.message ?? "Create an avatar before trying on products." };
+    case "AVATAR_MISSING": return { ...state, status: "error-avatar-required", errorMessage: action.message ?? "Create a photo-based 3D avatar before trying on products." };
     case "AVATAR_READY": return { ...state, status: "ready", productId: action.productId, errorMessage: null };
     case "SELECT_SIZE": return { ...state, selectedSize: action.size };
     case "SELECT_COLOR": return { ...state, selectedColor: action.color };
