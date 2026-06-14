@@ -37,11 +37,14 @@ const normalizeTryOnSession = (session: TryOnSessionResponse): TryOnSession => (
   createdAt: session.createdAt ?? null,
 });
 
+const createClientSessionId = (productId: string) =>
+  globalThis.crypto?.randomUUID?.() ?? `${productId}-${Date.now()}`;
+
 const normalizeCreatedTryOn = (
   payload: CreateTryOnSessionPayload,
   result: TryOnResultResponse,
 ): TryOnSession => ({
-  id: crypto.randomUUID?.() ?? `${payload.productId}-${Date.now()}`,
+  id: createClientSessionId(payload.productId),
   productId: payload.productId,
   avatarId: payload.avatarId ?? null,
   sessionType: payload.sessionType,
