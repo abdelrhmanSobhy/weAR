@@ -5,9 +5,10 @@ const fileOfSize = (type: string, size: number) => new File([new Uint8Array(size
 
 describe("avatar measurement and photo helpers", () => {
   it("validates manual measurements and maps payloads with nullable fields", () => {
-    const parsed = manualMeasurementSchema.parse({ heightCm: 180, chestCm: 100 });
-    expect(mapManualMeasurementsToPayload(parsed)).toMatchObject({ heightCm: 180, chestCm: 100, waistCm: null });
-    expect(() => manualMeasurementSchema.parse({ heightCm: 0 })).toThrow();
+    const parsed = manualMeasurementSchema.parse({ heightCm: 180, weightKg: 75, chestCm: 100 });
+    expect(mapManualMeasurementsToPayload(parsed)).toMatchObject({ heightCm: 180, weightKg: 75, chestCm: 100, waistCm: null });
+    expect(() => manualMeasurementSchema.parse({ heightCm: 0, weightKg: 75 })).toThrow();
+    expect(() => manualMeasurementSchema.parse({ heightCm: 180 })).toThrow();
   });
 
   it("normalizes and formats nullable measurements", () => {
