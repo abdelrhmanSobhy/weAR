@@ -119,7 +119,8 @@ export interface SizeRecommendation {
 }
 
 export interface ExtractAvatarFromImageInput {
-  imageFile: File;
+  frontImageFile: File;
+  sideImageFile: File;
   heightCm: number;
 }
 
@@ -162,13 +163,15 @@ export const validateAvatarImageFile = (file: File): void => {
   }
 };
 
-export const buildAvatarImageExtractionFormData = ({ imageFile, heightCm }: ExtractAvatarFromImageInput): FormData => {
-  validateAvatarImageFile(imageFile);
+export const buildAvatarImageExtractionFormData = ({ frontImageFile, sideImageFile, heightCm }: ExtractAvatarFromImageInput): FormData => {
+  validateAvatarImageFile(frontImageFile);
+  validateAvatarImageFile(sideImageFile);
   if (!Number.isFinite(heightCm) || heightCm < 1 || heightCm > 300) {
     throw new Error("Height in centimeters is required");
   }
   const formData = new FormData();
-  formData.append("ImageFile", imageFile);
+  formData.append("FrontImageFile", frontImageFile);
+  formData.append("SideImageFile", sideImageFile);
   formData.append("HeightCm", String(heightCm));
   return formData;
 };

@@ -16,21 +16,24 @@ import type { CustomerAvatar } from "@/features/customer/types/profileAvatar";
 
 const LazyTryOn3DViewer = lazy(() => import("@/features/customer/try-on/components/TryOn3DViewer"));
 
-const extractErrorMessage = (error: unknown): string => {
+const extractErrorMessage = (error: unknown): { message: string; fieldErrors?: Record<string, string[]> } => {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data;
     const code = data?.code;
+    const fieldErrors = data?.errors && typeof data.errors === "object" && !Array.isArray(data.errors)
+      ? data.errors as Record<string, string[]>
+      : undefined;
     const msg = data?.message ?? data?.error?.message ?? (Array.isArray(data?.errors) ? data.errors[0] : null);
     if (code === "AI_EXTRACTION_FAILED" || code === "INVALID_FILE_TYPE") {
-      return msg ?? "The AI model could not process this image. Please upload a clear full-body front-view photo with plain background and form-fitting clothes.";
+      return { message: msg ?? "The AI model could not process the uploaded images. Please upload clear full-body front and side-view photos with plain background and form-fitting clothes.", fieldErrors };
     }
-    if (error.response?.status === 422) {
-      return msg ?? "Validation failed. Check that the image is JPEG/PNG under 5 MB and height is valid.";
+    if (error.response?.status === 422 || error.response?.status === 400) {
+      return { message: msg ?? "Validation failed. Check that both images are JPEG/PNG under 5 MB and height is valid.", fieldErrors };
     }
-    if (!error.response) return "Network error. Check your connection and try again.";
-    return msg ?? "Extraction failed. Try another photo or enter measurements manually.";
+    if (!error.response) return { message: "Network error. Check your connection and try again." };
+    return { message: msg ?? "Extraction failed. Try another photo pair or enter measurements manually.", fieldErrors };
   }
-  return "Extraction failed. Try another photo or enter measurements manually.";
+  return { message: "Extraction failed. Try another photo pair or enter measurements manually." };
 };
 
 const extractTraceId = (error: unknown): string | null => {
@@ -46,8 +49,14 @@ export function CustomerAvatarPhotoPage() {
   const returnTo = getSafeCustomerReturnRoute(new URLSearchParams(location.search).get("returnTo"), CUSTOMER_ROUTES.avatar);
   const returnsToTryOn = returnTo.includes("try-on");
   const extract = useExtractCustomerAvatarFromImage();
-  const [file, setFile] = useState<File | null>(null); const [heightCm, setHeightCm] = useState(""); const [error, setError] = useState<string | null>(null); const [result, setResult] = useState<CustomerAvatar | null>(null); const [traceId, setTraceId] = useState<string | null>(null);
-  const extractionStages = ["Analyzing your image…", "Extracting measurements…", "Generating your 3D avatar…", "This may take up to 30 seconds…"];
+  const [frontFile, setFrontFile] = useState<File | null>(null);
+  const [sideFile, setSideFile] = useState<File | null>(null);
+  const [heightCm, setHeightCm] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]> | null>(null);
+  const [result, setResult] = useState<CustomerAvatar | null>(null);
+  const [traceId, setTraceId] = useState<string | null>(null);
+  const extractionStages = ["Analyzing your images…", "Extracting measurements…", "Generating your 3D avatar…", "This may take up to 30 seconds…"];
   const [stageIndex, setStageIndex] = useState(0);
   const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
@@ -60,23 +69,34 @@ export function CustomerAvatarPhotoPage() {
     }
     return () => { if (stageTimer.current) clearInterval(stageTimer.current); };
   }, [extract.isPending, extractionStages.length]);
-  const previewUrl = useMemo(() => file ? URL.createObjectURL(file) : null, [file]);
-  const resetForm = () => { setFile(null); setResult(null); setError(null); setTraceId(null); };
-  const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => { const next = event.target.files?.[0] ?? null; setResult(null); setError(null); setTraceId(null); if (!next) { setFile(null); return; } try { validateAvatarImageFile(next); setFile(next); } catch (err) { setFile(null); setError(err instanceof Error ? err.message : "Invalid image file"); } };
+  const frontPreviewUrl = useMemo(() => frontFile ? URL.createObjectURL(frontFile) : null, [frontFile]);
+  const sidePreviewUrl = useMemo(() => sideFile ? URL.createObjectURL(sideFile) : null, [sideFile]);
+  useEffect(() => () => { if (frontPreviewUrl) URL.revokeObjectURL(frontPreviewUrl); }, [frontPreviewUrl]);
+  useEffect(() => () => { if (sidePreviewUrl) URL.revokeObjectURL(sidePreviewUrl); }, [sidePreviewUrl]);
+  const resetForm = () => { setFrontFile(null); setSideFile(null); setResult(null); setError(null); setFieldErrors(null); setTraceId(null); };
+  const onFileChange = (setter: (file: File | null) => void) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    const next = event.target.files?.[0] ?? null;
+    setResult(null); setError(null); setFieldErrors(null); setTraceId(null);
+    if (!next) { setter(null); return; }
+    try { validateAvatarImageFile(next); setter(next); }
+    catch (err) { setter(null); setError(err instanceof Error ? err.message : "Invalid image file"); }
+  };
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!file) { setError("Choose one JPEG or PNG full-body image."); return; }
+    if (!frontFile) { setError("Choose a JPEG or PNG front-view full-body image."); return; }
+    if (!sideFile) { setError("Choose a JPEG or PNG side-view full-body image."); return; }
     const parsedHeight = Number(heightCm);
     if (!Number.isFinite(parsedHeight) || parsedHeight < 1) { setError("Height in centimeters is required."); return; }
-    extract.mutate({ imageFile: file, heightCm: parsedHeight }, {
-      onSuccess: (data) => { setResult(data); setError(null); setTraceId(null); },
-      onError: (err) => { setError(extractErrorMessage(err)); setTraceId(extractTraceId(err)); },
+    extract.mutate({ frontImageFile: frontFile, sideImageFile: sideFile, heightCm: parsedHeight }, {
+      onSuccess: (data) => { setResult(data); setError(null); setFieldErrors(null); setTraceId(null); },
+      onError: (err) => { const parsed = extractErrorMessage(err); setError(parsed.message); setFieldErrors(parsed.fieldErrors ?? null); setTraceId(extractTraceId(err)); },
     });
   };
   const safeModelUrl = result ? toSafeModelUrl(result.avatar3dModelUrl) : null;
+  const submitDisabled = extract.isPending || !frontFile || !sideFile || !(Number(heightCm) >= 1 && Number(heightCm) <= 300);
   return (
     <div className="space-y-6">
-      <CustomerPageHeader title="Photo avatar extraction" description="Upload one full-body JPEG or PNG image up to 5 MB and provide your height." />
+      <CustomerPageHeader title="Photo avatar extraction" description="Upload one front-view and one side-view full-body JPEG or PNG image (up to 5 MB each) and provide your height." />
 
       <Card className="border-[#E4DCD1] bg-[#FAF7F4]">
         <CardHeader>
@@ -84,40 +104,55 @@ export function CustomerAvatarPhotoPage() {
         </CardHeader>
         <CardContent>
           <ul className="grid gap-1.5 text-sm text-[#4D433D] sm:grid-cols-2">
-            <li>Stand straight with arms slightly away from your sides</li>
-            <li>Wear form-fitting clothing (sportswear works well)</li>
-            <li>Face the camera directly — front view only</li>
-            <li>Use a plain, light-coloured background</li>
+            <li>Stand straight with arms slightly away from your sides — FRONT VIEW</li>
+            <li>Stand straight with arms slightly away from your sides — SIDE VIEW</li>
+            <li>Wear form-fitting clothing for both photos (sportswear works well)</li>
+            <li>Use a plain, light-coloured background for both</li>
             <li>Ensure even lighting with no strong shadows</li>
-            <li>Your full body must be visible — head to feet</li>
+            <li>Your full body must be visible — head to feet in both photos</li>
           </ul>
         </CardContent>
       </Card>
 
       {error ? <div><InlineState tone="error" title={error} />{traceId ? <p className="mt-1 text-xs text-[#6F625B]">Reference: {traceId}</p> : null}</div> : null}
+      {fieldErrors ? (
+        <div className="rounded-2xl border border-[#E4DCD1] bg-[#FBF2F0] p-4 text-sm text-[#7A2E2E]" role="alert">
+          <ul className="grid gap-1">
+            {Object.entries(fieldErrors).map(([key, messages]) => (
+              <li key={key}><span className="font-semibold">{key}:</span> {messages.join(" ")}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Upload photo</CardTitle>
-            <CardDescription>The image is used for processing and is not stored after extraction.</CardDescription>
+            <CardTitle>Upload photos</CardTitle>
+            <CardDescription>The images are used for processing and are not stored after extraction.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={onSubmit} className="grid gap-4">
-              <Field id="imageFile" label="Full-body image">
-                <Input id="imageFile" name="imageFile" type="file" accept="image/jpeg,image/png" onChange={onFileChange} aria-describedby="imageFile-hint" />
-                <p id="imageFile-hint" className="text-xs text-[#6F625B]">JPEG or PNG, maximum 5 MB.</p>
+              <Field id="frontImageFile" label="Front full-body image">
+                <Input id="frontImageFile" name="frontImageFile" type="file" accept="image/jpeg,image/png" onChange={onFileChange(setFrontFile)} aria-describedby="frontImageFile-hint" />
+                <p id="frontImageFile-hint" className="text-xs text-[#6F625B]">Clear front-view photo. JPEG or PNG, maximum 5 MB.</p>
               </Field>
-              {file ? <p className="text-sm text-[#4D433D]">Selected: {file.name}</p> : null}
-              {previewUrl ? <img src={previewUrl} alt="Selected avatar source preview" className="max-h-64 rounded-2xl border object-contain" /> : null}
+              {frontFile ? <p className="text-sm text-[#4D433D]">Selected front: {frontFile.name}</p> : null}
+              {frontPreviewUrl ? <img src={frontPreviewUrl} alt="Selected front avatar source preview" className="max-h-64 rounded-2xl border object-contain" /> : null}
+              <Field id="sideImageFile" label="Side full-body image">
+                <Input id="sideImageFile" name="sideImageFile" type="file" accept="image/jpeg,image/png" onChange={onFileChange(setSideFile)} aria-describedby="sideImageFile-hint" />
+                <p id="sideImageFile-hint" className="text-xs text-[#6F625B]">Clear side-view photo. JPEG or PNG, maximum 5 MB.</p>
+              </Field>
+              {sideFile ? <p className="text-sm text-[#4D433D]">Selected side: {sideFile.name}</p> : null}
+              {sidePreviewUrl ? <img src={sidePreviewUrl} alt="Selected side avatar source preview" className="max-h-64 rounded-2xl border object-contain" /> : null}
               <Field id="heightCm" label="Height in centimeters">
                 <Input id="heightCm" name="heightCm" type="number" min={1} max={300} required value={heightCm} onChange={(event) => setHeightCm(event.target.value)} />
               </Field>
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={extract.isPending}>
+                <Button type="submit" disabled={submitDisabled}>
                   {extract.isPending ? extractionStages[stageIndex] : "Extract measurements"}
                 </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>Replace image</Button>
+                <Button type="button" variant="outline" onClick={resetForm}>Replace images</Button>
               </div>
             </form>
           </CardContent>
@@ -130,7 +165,7 @@ export function CustomerAvatarPhotoPage() {
               {safeModelUrl
                 ? "Your measurements and 3D avatar were generated successfully."
                 : result
-                  ? "Measurements saved. A 3D model was not generated, so 3D try-on will require another photo attempt."
+                  ? "Measurements were saved successfully, but no 3D avatar model was returned by the backend."
                   : "Results appear here after processing."}
             </CardDescription>
           </CardHeader>
@@ -152,10 +187,12 @@ export function CustomerAvatarPhotoPage() {
                       ? returnsToTryOn
                         ? <Button onClick={() => navigate(returnTo)}>Continue to try-on</Button>
                         : <Button onClick={() => navigate(returnTo)}>Done</Button>
-                      : <>
-                          <Button onClick={resetForm}>Try another photo</Button>
-                          <Button variant="outline" onClick={() => navigate(CUSTOMER_ROUTES.avatar)}>Go to avatar</Button>
-                        </>}
+                      : returnsToTryOn
+                        ? <>
+                            <Button onClick={resetForm}>Try another photo pair</Button>
+                            <Button variant="outline" onClick={() => navigate(CUSTOMER_ROUTES.avatar)}>Go to avatar</Button>
+                          </>
+                        : <Button onClick={() => navigate(returnTo)}>Done</Button>}
                   </div>
                 </>
               : <InlineState title="No extracted measurements yet" />}
