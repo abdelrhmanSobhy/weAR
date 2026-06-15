@@ -102,10 +102,10 @@ type BackendAvatarMeasurementPayload = {
   hipsCm: number | null;
   shoulderWidthCm: number | null;
   inseamCm: number | null;
-  neckCm: null;
-  armLengthCm: null;
-  shoeSizeEu: null;
-  bodyShape: null;
+  neckCm: number | null;
+  armLengthCm: number | null;
+  shoeSizeEu: number | null;
+  bodyShape: string | null;
   source: "Manual";
 };
 
@@ -126,10 +126,10 @@ const toBackendAvatarMeasurements = (
     hipsCm: measurements.hipsCm ?? null,
     shoulderWidthCm: measurements.shoulderCm ?? null,
     inseamCm: measurements.inseamCm ?? null,
-    neckCm: null,
-    armLengthCm: null,
-    shoeSizeEu: null,
-    bodyShape: null,
+    neckCm: measurements.neckCm ?? null,
+    armLengthCm: measurements.armLengthCm ?? null,
+    shoeSizeEu: measurements.shoeSizeEu ?? null,
+    bodyShape: measurements.bodyShape ?? null,
     source: "Manual",
   };
 };
@@ -152,6 +152,10 @@ const mapFlatAvatarToCustomerAvatar = (
         avatar.shoulderWidthCm ??
         null,
       inseamCm: avatar.inseamCm ?? null,
+      neckCm: avatar.neckCm ?? null,
+      armLengthCm: avatar.armLengthCm ?? null,
+      shoeSizeEu: avatar.shoeSizeEu ?? null,
+      bodyShape: avatar.bodyShape ?? null,
     },
   ),
   avatar3dModelUrl: avatar.avatar3dModelUrl ?? null,
@@ -197,6 +201,22 @@ const parseHistoryMeasurements = (
       inseamCm:
         typeof parsed.InseamCm === "number"
           ? parsed.InseamCm
+          : null,
+      neckCm:
+        typeof parsed.NeckCm === "number"
+          ? parsed.NeckCm
+          : null,
+      armLengthCm:
+        typeof parsed.ArmLengthCm === "number"
+          ? parsed.ArmLengthCm
+          : null,
+      shoeSizeEu:
+        typeof parsed.ShoeSizeEu === "number"
+          ? parsed.ShoeSizeEu
+          : null,
+      bodyShape:
+        typeof parsed.BodyShape === "string"
+          ? parsed.BodyShape
           : null,
     });
   } catch {

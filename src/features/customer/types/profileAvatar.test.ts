@@ -27,6 +27,16 @@ describe("avatar measurement and photo helpers", () => {
     expect(() => validateAvatarImageFile(fileOfSize("image/png", MAX_AVATAR_IMAGE_BYTES + 1))).toThrow(/5 MB/);
   });
 
+  it("rejects empty (zero-byte) images", () => {
+    expect(() => validateAvatarImageFile(fileOfSize("image/png", 0))).toThrow(/must not be empty/);
+  });
+
+  it("maps and normalizes the new optional fields and body shape", () => {
+    const parsed = manualMeasurementSchema.parse({ heightCm: 180, weightKg: 75, neckCm: 38, armLengthCm: 60, shoeSizeEu: 43, bodyShape: "Rectangle" });
+    expect(mapManualMeasurementsToPayload(parsed)).toMatchObject({ neckCm: 38, armLengthCm: 60, shoeSizeEu: 43, bodyShape: "Rectangle" });
+    expect(normalizeNullableMeasurements({ heightCm: 170, bodyShape: "Pear" })).toMatchObject({ neckCm: null, bodyShape: "Pear" });
+  });
+
   it("requires height and builds FormData fields without headers", () => {
     const imageFile = fileOfSize("image/png", 10);
     expect(() => buildAvatarImageExtractionFormData({ imageFile, heightCm: 0 })).toThrow(/Height/);

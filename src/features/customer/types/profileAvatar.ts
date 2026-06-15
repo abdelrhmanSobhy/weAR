@@ -55,12 +55,19 @@ export const measurementFieldConfigs = [
   { key: "hipsCm", label: "Hips", unit: "cm", required: false, min: 1, max: 250 },
   { key: "shoulderCm", label: "Shoulder", unit: "cm", required: false, min: 1, max: 200 },
   { key: "inseamCm", label: "Inseam", unit: "cm", required: false, min: 1, max: 200 },
+  { key: "neckCm", label: "Neck", unit: "cm", required: false, min: 1, max: 100 },
+  { key: "armLengthCm", label: "Arm length", unit: "cm", required: false, min: 1, max: 150 },
+  { key: "shoeSizeEu", label: "Shoe size (EU)", unit: "EU", required: false, min: 20, max: 60 },
 ] as const;
+
+export const BODY_SHAPE_OPTIONS = ["Rectangle", "Triangle", "InvertedTriangle", "Hourglass", "Apple", "Pear"] as const;
+export type BodyShape = (typeof BODY_SHAPE_OPTIONS)[number];
 
 export type MeasurementFieldKey = (typeof measurementFieldConfigs)[number]["key"];
 export type BodyMeasurements = Partial<Record<MeasurementFieldKey, number | null>> & {
   heightCm: number | null;
   weightKg?: number | null;
+  bodyShape?: BodyShape | string | null;
 };
 export type ManualMeasurementsInput = Partial<Record<MeasurementFieldKey, number | null>> & {
   heightCm: number;
@@ -80,6 +87,10 @@ export const manualMeasurementSchema = z.object({
   hipsCm: optionalMeasurement.optional(),
   shoulderCm: optionalMeasurement.optional(),
   inseamCm: optionalMeasurement.optional(),
+  neckCm: optionalMeasurement.optional(),
+  armLengthCm: optionalMeasurement.optional(),
+  shoeSizeEu: optionalMeasurement.optional(),
+  bodyShape: z.enum(BODY_SHAPE_OPTIONS).nullable().optional(),
 });
 
 export interface CustomerAvatar {
@@ -115,20 +126,26 @@ export interface ExtractAvatarFromImageInput {
 export const MAX_AVATAR_IMAGE_BYTES = 5 * 1024 * 1024;
 export const AVATAR_IMAGE_TYPES = ["image/jpeg", "image/png"] as const;
 
-export const mapManualMeasurementsToPayload = (input: ManualMeasurementsInput): BodyMeasurements =>
-  measurementFieldConfigs.reduce((payload, field) => {
+export const mapManualMeasurementsToPayload = (input: ManualMeasurementsInput & { bodyShape?: BodyShape | string | null }): BodyMeasurements => {
+  const payload = measurementFieldConfigs.reduce((acc, field) => {
     const value = input[field.key];
-    payload[field.key] = value === undefined ? null : value;
-    return payload;
+    acc[field.key] = value === undefined ? null : value;
+    return acc;
   }, {} as BodyMeasurements);
+  payload.bodyShape = input.bodyShape ?? null;
+  return payload;
+};
 
 export const normalizeNullableMeasurements = (
-  measurements: Partial<Record<MeasurementFieldKey, number | null | undefined>>,
-): BodyMeasurements =>
-  measurementFieldConfigs.reduce((normalized, field) => {
-    normalized[field.key] = measurements[field.key] ?? null;
-    return normalized;
+  measurements: Partial<Record<MeasurementFieldKey, number | null | undefined>> & { bodyShape?: BodyShape | string | null },
+): BodyMeasurements => {
+  const normalized = measurementFieldConfigs.reduce((acc, field) => {
+    acc[field.key] = measurements[field.key] ?? null;
+    return acc;
   }, {} as BodyMeasurements);
+  normalized.bodyShape = measurements.bodyShape ?? null;
+  return normalized;
+};
 
 export const formatNullableMeasurement = (value: number | null | undefined): string =>
   value == null ? "—" : String(value);
@@ -136,6 +153,9 @@ export const formatNullableMeasurement = (value: number | null | undefined): str
 export const validateAvatarImageFile = (file: File): void => {
   if (![...AVATAR_IMAGE_TYPES].includes(file.type as (typeof AVATAR_IMAGE_TYPES)[number])) {
     throw new Error("Avatar photo must be a JPEG or PNG image");
+  }
+  if (file.size === 0) {
+    throw new Error("Avatar photo must not be empty");
   }
   if (file.size > MAX_AVATAR_IMAGE_BYTES) {
     throw new Error("Avatar photo must be 5 MB or smaller");

@@ -88,12 +88,16 @@ describe("profile, addresses and avatar API adapters", () => {
 
   it("creates manual avatars with backend measurement names, Manual source, and UUID response", async () => {
     mockedApiClient.post.mockResolvedValueOnce({ data: { data: "avatar-uuid-1" } });
-    await expect(avatarApi.createAvatar("c1", { heightCm: 170, weightKg: 68, chestCm: null, shoulderCm: 42 })).resolves.toBe("avatar-uuid-1");
+    await expect(avatarApi.createAvatar("c1", { heightCm: 170, weightKg: 68, chestCm: null, shoulderCm: 42, neckCm: 38, armLengthCm: 60, shoeSizeEu: 43, bodyShape: "Rectangle" })).resolves.toBe("avatar-uuid-1");
     expect(mockedApiClient.post).toHaveBeenCalledWith("/api/customers/c1/avatar", expect.objectContaining({
       heightCm: 170,
       weightKg: 68,
       chestCm: null,
       shoulderWidthCm: 42,
+      neckCm: 38,
+      armLengthCm: 60,
+      shoeSizeEu: 43,
+      bodyShape: "Rectangle",
       source: "Manual",
     }));
   });
@@ -191,7 +195,7 @@ describe("profile, addresses and avatar API adapters", () => {
     expect(mockedApiClient.post).toHaveBeenCalledWith(
       "/api/customers/c1/avatar/extract-from-image",
       expect.any(FormData),
-      { headers: { "Content-Type": undefined } },
+      { headers: { "Content-Type": undefined }, timeout: 90_000 },
     );
     const sentFormData = mockedApiClient.post.mock.calls[0][1] as FormData;
     expect(sentFormData.get("ImageFile")).toBe(file);
