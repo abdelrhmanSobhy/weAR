@@ -1,22 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import logoImage from "@/assets/auth/logo.webp";
 import {
-  FolderOpen,
+  Facebook,
   Heart,
-  Home,
+  Instagram,
   Layers,
+  Linkedin,
+  LogOut,
+  MapPin,
   Menu,
   Search,
+  ShoppingCart,
   Shirt,
-  ShoppingBag,
   Sparkles,
-  Store,
-  Truck,
+  Twitter,
   User,
-  Wand2,
   X,
+  Youtube,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/useAuthStore";
 import { useCartStore } from "@/features/customer/cart/useCartStore";
 import { computeItemCount } from "@/features/customer/cart/types/cart";
@@ -25,205 +27,411 @@ import { customerTheme } from "@/features/customer/styles/customerTheme";
 import { customerAuthApi } from "@/features/customer/api/customerAuth.api";
 import { cn } from "@/lib/utils";
 
-const CUSTOMER_NAV_ITEMS = [
-  { label: "Home", to: CUSTOMER_ROUTES.home, icon: Home },
-  { label: "Shop", to: CUSTOMER_ROUTES.shop, icon: Store },
-  { label: "Try On", to: CUSTOMER_ROUTES.tryOn, icon: Shirt },
-  { label: "History", to: CUSTOMER_ROUTES.tryOnHistory, icon: Sparkles },
-  { label: "Outfits", to: CUSTOMER_ROUTES.outfits, icon: Layers },
-  { label: "AI Style", to: CUSTOMER_ROUTES.aiSuggestions, icon: Wand2 },
-  { label: "Wardrobe", to: CUSTOMER_ROUTES.wardrobeCollections, icon: FolderOpen },
-  { label: "Favorites", to: CUSTOMER_ROUTES.favorites, icon: Heart },
-  { label: "Account", to: CUSTOMER_ROUTES.account, icon: User },
+const NAV_LINKS = [
+  { label: "Home", to: CUSTOMER_ROUTES.home },
+  { label: "Shop", to: CUSTOMER_ROUTES.shop },
+  { label: "Try On AR", to: CUSTOMER_ROUTES.tryOn },
+  { label: "About", to: CUSTOMER_ROUTES.about },
+  { label: "Blog", to: CUSTOMER_ROUTES.blog },
 ] as const;
 
-const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  cn(
-    "inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors",
-    customerTheme.focusRing,
-    isActive
-      ? "bg-[#F4EDE7] text-[#A37E6B]"
-      : "text-[#4D433D] hover:bg-[#F4EDE7] hover:text-[#A37E6B]",
+const USER_MENU = [
+  { label: "My Profile", to: CUSTOMER_ROUTES.account, icon: User },
+  { label: "My Avatar", to: CUSTOMER_ROUTES.avatar, icon: Shirt },
+  { label: "Wardrobe", to: CUSTOMER_ROUTES.wardrobeCollections, icon: Layers },
+  { label: "My Outfits", to: CUSTOMER_ROUTES.outfits, icon: Layers },
+  { label: "AI Suggestions", to: CUSTOMER_ROUTES.aiSuggestions, icon: Sparkles },
+  { label: "Try-On History", to: CUSTOMER_ROUTES.tryOnHistory, icon: Shirt },
+  { label: "Addresses", to: CUSTOMER_ROUTES.addresses, icon: MapPin },
+] as const;
+
+const FOOTER_SHOP = ["Women", "Men", "Gen-Z", "All"];
+const FOOTER_CARE = ["Shipping & Returns", "FAQ", "Track Order", "Exchange Policy"];
+const FOOTER_COMPANY = ["About Us", "Brand Value", "Blogs", "Careers"];
+
+function WeArLogo({ onClick, size = "md" }: { onClick?: () => void; size?: "sm" | "md" }) {
+  const imgClass = size === "sm" ? "h-[50px] w-[55px]" : "h-[60px] w-[65px]";
+  const textSize = size === "sm" ? "text-[28px]" : "text-[32px]";
+  return (
+    <Link
+      to={CUSTOMER_ROUTES.home}
+      onClick={onClick}
+      className={cn("flex shrink-0 items-center gap-1", customerTheme.focusRing)}
+      aria-label="weAR home"
+    >
+      <div className={cn("overflow-hidden", imgClass)}>
+        <img src={logoImage} alt="weAR logo" className="h-full w-full object-contain" />
+      </div>
+      <span
+        className={cn(textSize, "leading-none tracking-wide", customerTheme.logoFont)}
+        style={{ color: "#9f8062" }}
+      >
+        weAR
+      </span>
+    </Link>
   );
+}
 
 export function CustomerLayout() {
   const logout = useAuthStore((state) => state.logout);
+  const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const cartItems = useCartStore((s) => s.items);
   const cartCount = computeItemCount(cartItems);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
+  /* Close mobile menu on Escape */
   useEffect(() => {
-    if (!isMobileMenuOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsMobileMenuOpen(false);
+    if (!mobileOpen && !userMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMobileOpen(false);
+        setUserMenuOpen(false);
+      }
     };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen, userMenuOpen]);
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isMobileMenuOpen]);
-
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+  /* Close user dropdown on outside click */
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [userMenuOpen]);
 
   const signOut = async () => {
-    try {
-      await customerAuthApi.logout();
-    } catch {
-      // Local cleanup is required even when backend revocation is unavailable.
-    } finally {
-      logout();
-      navigate(CUSTOMER_ROUTES.login, { replace: true });
-    }
+    setUserMenuOpen(false);
+    setMobileOpen(false);
+    try { await customerAuthApi.logout(); } catch { /* continue */ }
+    finally { logout(); navigate(CUSTOMER_ROUTES.login, { replace: true }); }
   };
 
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    cn(
+      "font-['Playfair_Display'] text-[17px] font-normal tracking-wide transition-colors px-2 py-1",
+      customerTheme.focusRing,
+      isActive
+        ? "text-[#954c2a] border-b-2 border-[#954c2a]"
+        : "text-[#954c2a] hover:text-[#7d3e23]",
+    );
+
   return (
-    <div className={`min-h-screen ${customerTheme.page}`}>
-      <div className="bg-[#A37E6B] px-4 py-2 text-center text-sm font-medium text-white">
-        <Truck className="mr-2 inline h-4 w-4" aria-hidden="true" />
-        Free shipping on curated wardrobe staples this week
+    <div className={cn("flex min-h-screen flex-col", customerTheme.page)}>
+
+      {/* Announcement bar */}
+      <div className={cn("py-1.5 text-center text-[13px] font-medium", customerTheme.announcementBar)}>
+        Enjoy Free Shipping In Your Order
       </div>
 
-      <header className="sticky top-0 z-40 border-b border-[#E4DCD1] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85">
-        <div className={`${customerTheme.container} flex h-20 items-center justify-between gap-4`}>
-          <Link
-            to={CUSTOMER_ROUTES.home}
-            className={cn("flex items-center gap-3 rounded-full", customerTheme.focusRing)}
-            onClick={closeMobileMenu}
-          >
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F4EDE7] text-[#A37E6B]">
-              <Sparkles className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <span>
-              <span className="block text-xl font-bold tracking-tight text-[#2F2925]">
-                weAR
-              </span>
-              <span className="block text-xs font-medium uppercase tracking-[0.18em] text-[#A37E6B]">
-                Storefront
-              </span>
-            </span>
-          </Link>
+      {/* ── Header ── */}
+      <header className={cn(
+        "sticky top-0 z-40 border-b border-[#e8ddd5] shadow-[0_1px_3px_rgba(0,0,0,0.07)]",
+        customerTheme.navBg,
+      )}>
+        <div className={cn("flex h-18 items-center justify-between gap-4", customerTheme.container)}>
 
-          <nav className="hidden items-center gap-1 lg:flex" aria-label="Customer navigation">
-            {CUSTOMER_NAV_ITEMS.map((item) => (
-              <NavLink key={item.to} to={item.to} className={navLinkClass}>
-                <item.icon className="h-4 w-4" aria-hidden="true" />
+          {/* Logo */}
+          <WeArLogo onClick={() => setMobileOpen(false)} />
+
+          {/* Desktop Nav */}
+          <nav className="hidden items-center gap-1 lg:flex" aria-label="Main navigation">
+            {NAV_LINKS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === CUSTOMER_ROUTES.home}
+                className={navLinkClass}
+              >
                 {item.label}
               </NavLink>
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
-            <Button
+          {/* Right actions */}
+          <div className="flex items-center gap-3">
+            {/* Search */}
+            <button
               type="button"
-              variant="ghost"
-              size="icon"
-              className={cn("hidden rounded-full text-[#4D433D] hover:bg-[#F4EDE7] hover:text-[#A37E6B] sm:inline-flex", customerTheme.focusRing)}
-              aria-label="Search products"
+              aria-label="Search"
+              className={cn("hidden text-[#954c2a] transition-colors hover:text-[#7d3e23] sm:block", customerTheme.focusRing)}
             >
-              <Search className="h-5 w-5" aria-hidden="true" />
-            </Button>
-            <Button
+              <Search className="h-5 w-5" />
+            </button>
+
+            {/* Favorites */}
+            <button
               type="button"
-              variant="outline"
-              className={cn("relative rounded-full border-[#E4DCD1] bg-white text-[#4D433D] hover:bg-[#F4EDE7] hover:text-[#A37E6B]", customerTheme.focusRing)}
-              aria-label={cartCount > 0 ? `Open cart, ${cartCount} item${cartCount === 1 ? "" : "s"}` : "Open cart"}
+              aria-label="Favorites"
+              onClick={() => navigate(CUSTOMER_ROUTES.favorites)}
+              className={cn("text-[#954c2a] transition-colors hover:text-[#7d3e23]", customerTheme.focusRing)}
+            >
+              <Heart className="h-5 w-5" />
+            </button>
+
+            {/* Cart */}
+            <button
+              type="button"
+              aria-label={cartCount > 0 ? `Cart (${cartCount} items)` : "Cart"}
               onClick={() => navigate(CUSTOMER_ROUTES.cart)}
+              className={cn("relative text-[#954c2a] transition-colors hover:text-[#7d3e23]", customerTheme.focusRing)}
             >
-              <ShoppingBag className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Cart</span>
+              <ShoppingCart className="h-5 w-5" />
               {cartCount > 0 && (
                 <span
-                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#A37E6B] text-[10px] font-bold text-white"
+                  className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#954c2a] text-[10px] font-bold text-white"
                   aria-hidden="true"
                 >
                   {cartCount > 99 ? "99+" : cartCount}
                 </span>
               )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className={cn("hidden rounded-full text-[#4D433D] hover:bg-[#F4EDE7] hover:text-[#A37E6B] xl:inline-flex", customerTheme.focusRing)}
-              onClick={signOut}
-            >
-              Sign out
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className={cn("rounded-full text-[#4D433D] hover:bg-[#F4EDE7] hover:text-[#A37E6B] lg:hidden", customerTheme.focusRing)}
-              aria-label={isMobileMenuOpen ? "Close customer menu" : "Open customer menu"}
-              aria-expanded={isMobileMenuOpen}
-              aria-controls="customer-mobile-menu"
-              onClick={() => setIsMobileMenuOpen((open) => !open)}
-            >
-              {isMobileMenuOpen ? (
-                <X className="h-5 w-5" aria-hidden="true" />
-              ) : (
-                <Menu className="h-5 w-5" aria-hidden="true" />
+            </button>
+
+            {/* User dropdown */}
+            <div className="relative hidden sm:block" ref={userMenuRef}>
+              <button
+                type="button"
+                aria-label="Account menu"
+                aria-expanded={userMenuOpen}
+                onClick={() => setUserMenuOpen((o) => !o)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full border border-transparent px-2 py-1 text-[#954c2a] transition-colors hover:border-[#e8ddd5] hover:bg-[#fef7f0]",
+                  userMenuOpen && "border-[#e8ddd5] bg-[#fef7f0]",
+                  customerTheme.focusRing,
+                )}
+              >
+                <User className="h-5 w-5" />
+                {user?.fullName && (
+                  <span className="max-w-20 truncate text-[13px] font-medium">
+                    {user.fullName.split(" ")[0]}
+                  </span>
+                )}
+              </button>
+
+              {/* Dropdown panel */}
+              {userMenuOpen && (
+                <div
+                  className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-[#e8ddd5] bg-white shadow-xl"
+                  role="menu"
+                  aria-label="User menu"
+                >
+                  {user && (
+                    <div className="border-b border-[#e8ddd5] px-4 py-3">
+                      <p className="truncate text-[13px] font-semibold text-[#2F2925]">{user.fullName}</p>
+                      <p className="truncate text-[12px] text-[#9c6b54]">{user.email}</p>
+                    </div>
+                  )}
+                  <div className="py-1">
+                    {USER_MENU.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        role="menuitem"
+                        onClick={() => setUserMenuOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#2F2925] transition-colors hover:bg-[#fef7f0] hover:text-[#954c2a]",
+                          customerTheme.focusRing,
+                        )}
+                      >
+                        <item.icon className="h-4 w-4 shrink-0 text-[#9c6b54]" />
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                  <div className="border-t border-[#e8ddd5] py-1">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => void signOut()}
+                      className={cn(
+                        "flex w-full items-center gap-3 px-4 py-2.5 text-[14px] text-red-600 transition-colors hover:bg-red-50",
+                        customerTheme.focusRing,
+                      )}
+                    >
+                      <LogOut className="h-4 w-4 shrink-0" />
+                      Sign out
+                    </button>
+                  </div>
+                </div>
               )}
-            </Button>
+            </div>
+
+            {/* Mobile hamburger */}
+            <button
+              type="button"
+              className={cn("text-[#954c2a] hover:text-[#7d3e23] lg:hidden", customerTheme.focusRing)}
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileOpen}
+              onClick={() => setMobileOpen((o) => !o)}
+            >
+              {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
         </div>
 
-        {isMobileMenuOpen && (
-          <div id="customer-mobile-menu" className="border-t border-[#E4DCD1] bg-white lg:hidden">
-            <nav className={`${customerTheme.container} flex flex-col gap-2 py-4`} aria-label="Mobile customer navigation">
-              {CUSTOMER_NAV_ITEMS.map((item) => (
+        {/* Mobile menu */}
+        {mobileOpen && (
+          <div className={cn("border-t border-[#e8ddd5] lg:hidden", customerTheme.navBg)}>
+            <div className={cn("flex flex-col gap-0.5 py-4", customerTheme.container)}>
+              {/* Main nav links */}
+              {NAV_LINKS.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  end={item.to === CUSTOMER_ROUTES.home}
                   className={navLinkClass}
-                  onClick={closeMobileMenu}
+                  onClick={() => setMobileOpen(false)}
                 >
-                  <item.icon className="h-4 w-4" aria-hidden="true" />
                   {item.label}
                 </NavLink>
               ))}
-              <Button
-                type="button"
-                variant="ghost"
-                className={cn("justify-start rounded-full text-[#4D433D] hover:bg-[#F4EDE7] hover:text-[#A37E6B]", customerTheme.focusRing)}
-                onClick={() => {
-                  void signOut();
-                  closeMobileMenu();
-                }}
+
+              {/* Divider */}
+              <div className="my-2 h-px bg-[#e8ddd5]" />
+
+              {/* User pages */}
+              {USER_MENU.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-2 py-2.5 text-[15px] text-[#6F625B] transition-colors hover:bg-[#fef7f0] hover:text-[#954c2a]",
+                    customerTheme.focusRing,
+                  )}
+                >
+                  <item.icon className="h-4 w-4 text-[#9c6b54]" />
+                  {item.label}
+                </Link>
+              ))}
+
+              <Link
+                to={CUSTOMER_ROUTES.favorites}
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-2 py-2.5 text-[15px] text-[#6F625B] transition-colors hover:bg-[#fef7f0] hover:text-[#954c2a]",
+                  customerTheme.focusRing,
+                )}
               >
-                <User className="h-4 w-4" aria-hidden="true" />
+                <Heart className="h-4 w-4 text-[#9c6b54]" />
+                Favorites
+              </Link>
+
+              {/* Sign out */}
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-2 py-2.5 text-left text-[15px] text-red-600 transition-colors hover:bg-red-50",
+                  customerTheme.focusRing,
+                )}
+              >
+                <LogOut className="h-4 w-4" />
                 Sign out
-              </Button>
-            </nav>
+              </button>
+            </div>
           </div>
         )}
       </header>
 
-      <main className={`${customerTheme.container} ${customerTheme.sectionY}`}>
+      {/* ── Main content ── */}
+      <main className={cn("flex-1", customerTheme.container, "py-8 sm:py-10")}>
         <Outlet />
       </main>
 
-      <footer className="border-t border-[#E4DCD1] bg-white" aria-label="Customer footer">
-        <div className={`${customerTheme.container} grid gap-6 py-8 md:grid-cols-[1.5fr_1fr_1fr]`}>
-          <div>
-            <p className="text-lg font-bold text-[#2F2925]">weAR Customer</p>
-            <p className="mt-2 max-w-md text-sm text-[#6F625B]">
-              A reusable storefront shell for upcoming catalog, try-on, and account experiences.
+      {/* ── Footer ── */}
+      <footer className={cn("mt-auto", customerTheme.footerBg)} aria-label="Footer">
+        <div className={cn("grid gap-8 py-12 md:grid-cols-[1.6fr_1fr_1fr_1fr_1.2fr]", customerTheme.container)}>
+
+          {/* Brand */}
+          <div className="space-y-4">
+            <WeArLogo size="sm" />
+            <p className="max-w-50 text-[13px] leading-relaxed text-[#6F625B]">
+              Where Every Find Fits Perfectly and Every Style Tells Your Story
             </p>
+            <div className="flex gap-3" aria-label="Social media">
+              {[Facebook, Twitter, Instagram, Linkedin, Youtube].map((Icon, i) => (
+                <a
+                  key={i}
+                  href="#"
+                  className={cn("text-[#9c6b54] transition-colors hover:text-[#954c2a]", customerTheme.focusRing)}
+                  aria-label={["Facebook", "Twitter", "Instagram", "LinkedIn", "YouTube"][i]}
+                >
+                  <Icon className="h-4 w-4" />
+                </a>
+              ))}
+            </div>
           </div>
-          <nav aria-label="Customer footer navigation" className="grid gap-2 text-sm">
-            {CUSTOMER_NAV_ITEMS.slice(0, 3).map((item) => (
-              <Link key={item.to} to={item.to} className={cn("text-[#6F625B] hover:text-[#A37E6B]", customerTheme.focusRing)}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-          <nav aria-label="Customer footer support links" className="grid gap-2 text-sm">
-            <p className="font-medium text-[#2F2925]">Support</p>
-            <Link to={CUSTOMER_ROUTES.about} className={cn("text-[#6F625B] hover:text-[#A37E6B]", customerTheme.focusRing)}>About</Link>
-            <Link to={CUSTOMER_ROUTES.shippingReturns} className={cn("text-[#6F625B] hover:text-[#A37E6B]", customerTheme.focusRing)}>Shipping &amp; Returns</Link>
-            <Link to={CUSTOMER_ROUTES.blog} className={cn("text-[#6F625B] hover:text-[#A37E6B]", customerTheme.focusRing)}>Blog</Link>
-          </nav>
+
+          {/* Shop */}
+          <div>
+            <p className="mb-3 font-['Playfair_Display'] text-[15px] font-semibold text-[#2F2925]">Shop</p>
+            <ul className="space-y-2">
+              {FOOTER_SHOP.map((item) => (
+                <li key={item}>
+                  <Link to={CUSTOMER_ROUTES.shop} className={cn("text-[13px] text-[#6F625B] transition-colors hover:text-[#954c2a]", customerTheme.focusRing)}>
+                    {item}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Care */}
+          <div>
+            <p className="mb-3 font-['Playfair_Display'] text-[15px] font-semibold text-[#2F2925]">Care</p>
+            <ul className="space-y-2">
+              {FOOTER_CARE.map((item) => (
+                <li key={item}>
+                  <Link to={CUSTOMER_ROUTES.shippingReturns} className={cn("text-[13px] text-[#6F625B] transition-colors hover:text-[#954c2a]", customerTheme.focusRing)}>
+                    {item}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Company */}
+          <div>
+            <p className="mb-3 font-['Playfair_Display'] text-[15px] font-semibold text-[#2F2925]">Our Company</p>
+            <ul className="space-y-2">
+              {FOOTER_COMPANY.map((item) => (
+                <li key={item}>
+                  <Link to={CUSTOMER_ROUTES.about} className={cn("text-[13px] text-[#6F625B] transition-colors hover:text-[#954c2a]", customerTheme.focusRing)}>
+                    {item}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Contacts */}
+          <div>
+            <p className="mb-3 font-['Playfair_Display'] text-[15px] font-semibold text-[#2F2925]">Contact us</p>
+            <ul className="space-y-2 text-[13px] text-[#6F625B]">
+              <li>✉ contact@company.com</li>
+              <li>✆ (414) 687 – 5892</li>
+              <li>⊙ 794 Mcallister St<br />San Francisco, 94102</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className={cn("border-t border-[#e0d4cb] py-4", customerTheme.container)}>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[12px] text-[#9c6b54]">
+            <span>© 2026 ALL RIGHTS RESERVED</span>
+            <span className="flex gap-3">
+              <a href="#" className={cn("hover:text-[#954c2a]", customerTheme.focusRing)}>Terms and Conditions</a>
+              <a href="#" className={cn("hover:text-[#954c2a]", customerTheme.focusRing)}>Privacy Policy</a>
+            </span>
+          </div>
         </div>
       </footer>
     </div>

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/features/auth/useAuthStore";
@@ -27,7 +27,7 @@ export function CustomerLoginPage() {
 
   const locationState = location.state as { message?: string } | null;
 
-  const handleLogin = async (e: FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMsg(null);
     setIsLoading(true);
@@ -67,104 +67,102 @@ export function CustomerLoginPage() {
 
   return (
     <CustomerAuthLayout imageSrc={loginImg} imageAlt="Customer Login">
+      {/* Title */}
       <div className="mb-7 text-center">
-        <h1
-          className="mb-1 text-[32px] font-bold text-[#A37E6B] md:text-[36px]"
-          style={{ fontFamily: '"PT Serif", serif' }}
-        >
+        <h1 className="mb-2 font-['Playfair_Display'] text-[32px] font-normal text-[#954c2a]">
           Login
         </h1>
-        <p className="text-[18px] leading-[1.05] text-[#C9A390]">
+        <p className="text-[15px] leading-snug text-[#9c6b54]">
           Welcome back! Please log in to access
           <br />
           your account
         </p>
       </div>
 
-      <form onSubmit={handleLogin} className="flex flex-col gap-3.5">
+      <form onSubmit={handleLogin} className="flex flex-col gap-4">
         {locationState?.message && (
-          <div className="rounded-[14px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-[14px] text-emerald-700">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-[13px] text-emerald-700">
             {locationState.message}
           </div>
         )}
         {errorMsg && (
-          <div className="rounded-[14px] border border-red-200 bg-red-50 px-4 py-3 text-center text-[14px] text-red-600">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-[13px] text-red-600">
             {errorMsg}
           </div>
         )}
 
+        {/* Email */}
         <div>
-          <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
-            Email
-          </label>
+          <label className="mb-1.5 block text-[14px] font-medium text-[#9c6b54]">Email</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your Email"
-            className="h-[58px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
+            className="h-13 w-full rounded-xl border border-[#e8ddd5] bg-white px-4 text-[15px] text-[#2F2925] outline-none transition-colors placeholder:text-[#c0a898] focus:border-[#954c2a]"
             required
           />
         </div>
 
+        {/* Password */}
         <div>
-          <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
-            Password
-          </label>
+          <label className="mb-1.5 block text-[14px] font-medium text-[#9c6b54]">Password</label>
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your Password"
-              className="h-[58px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 pr-14 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
+              className="h-13 w-full rounded-xl border border-[#e8ddd5] bg-white px-4 pr-12 text-[15px] text-[#2F2925] outline-none transition-colors placeholder:text-[#c0a898] focus:border-[#954c2a]"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-5 top-1/2 -translate-y-1/2 text-[#B6A092] transition-colors hover:text-[#5C5550]"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9c6b54] hover:text-[#954c2a]"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
-              {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          <div className="mt-2 text-right">
+          <div className="mt-1.5 text-right">
             <Link
               to={CUSTOMER_ROUTES.forgotPassword}
-              className="text-[14px] font-medium text-[#B6A092] transition-colors hover:text-[#A37E6B]"
+              className="text-[13px] text-[#9c6b54] hover:text-[#954c2a] transition-colors"
             >
               Forget Password?
             </Link>
           </div>
         </div>
 
-        <label className="mt-1 flex items-center gap-3 text-[16px] font-medium text-[#C9A390]">
+        {/* Remember me */}
+        <label className="flex items-center gap-2.5 text-[14px] text-[#9c6b54] cursor-pointer">
           <input
             type="checkbox"
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
-            className="h-4 w-4 accent-[#C9A390]"
+            className="h-4 w-4 rounded accent-[#954c2a]"
           />
           Remember me
         </label>
 
+        {/* Login button */}
         <button
           type="submit"
           disabled={isLoading}
-          className="mt-2 h-[58px] w-full rounded-[14px] bg-[#C9A390] text-[20px] font-medium text-white shadow-md shadow-[#C9A390]/20 transition-opacity hover:opacity-95 disabled:opacity-70"
+          className="h-13 w-full rounded-xl bg-[#9c6b54] text-[16px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
         >
           {isLoading ? "Loading..." : "Login"}
         </button>
 
-        <div className="my-1 flex items-center gap-2">
-          <div className="h-px flex-1 bg-[#C9A390]"></div>
-          <span className="text-[14px] font-medium uppercase text-[#C9A390]">
-            OR
-          </span>
-          <div className="h-px flex-1 bg-[#C9A390]"></div>
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-[#e8ddd5]" />
+          <span className="text-[13px] font-medium text-[#9c6b54]">OR</span>
+          <div className="h-px flex-1 bg-[#e8ddd5]" />
         </div>
 
+        {/* Google login */}
         <button
           type="button"
           disabled={!googleLoginConfigured}
@@ -173,23 +171,21 @@ export function CustomerLoginPage() {
               "Customer Google login is blocked until runtime config and the deployed response contract are confirmed.",
             )
           }
-          className="flex h-[58px] w-full items-center justify-center gap-4 rounded-[14px] border border-[#C9A390] bg-white text-[20px] font-medium text-[#B6A092] shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-13 w-full items-center justify-center gap-3 rounded-xl border border-[#e8ddd5] bg-white text-[15px] font-medium text-[#2F2925] transition-colors hover:bg-[#fef7f0] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <img src={googleIcon} alt="Google" className="h-6 w-6" />
+          <img src={googleIcon} alt="Google" className="h-5 w-5" />
           Login with Google
         </button>
         {!googleLoginConfigured && (
-          <p className="text-center text-[12px] text-[#B6A092]">
-            Customer Google login is pending confirmed runtime configuration and deployed contract.
+          <p className="text-center text-[12px] text-[#9c6b54]">
+            Customer Google login is pending confirmed runtime configuration.
           </p>
         )}
 
-        <div className="mt-3 text-center text-[16px] text-[#C9A390]">
+        {/* Sign up link */}
+        <div className="mt-1 text-center text-[14px] text-[#9c6b54]">
           Don&apos;t have an account?{" "}
-          <Link
-            to={CUSTOMER_ROUTES.signup}
-            className="font-medium text-[#A37E6B] transition-all hover:underline"
-          >
+          <Link to={CUSTOMER_ROUTES.signup} className="font-semibold text-[#954c2a] hover:underline">
             Sign Up ↗
           </Link>
         </div>

@@ -13,10 +13,10 @@ export function CustomerFavoritesPage() {
   if (favorites.isLoading) {
     return (
       <section className={`${customerTheme.card} p-8`} aria-busy="true">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
           Favorites
         </p>
-        <h1 className="mt-2 text-3xl font-semibold text-[#2F2925]">
+        <h1 className="mt-2 font-['Playfair_Display'] text-3xl font-normal text-[#2F2925]">
           Loading your saved products…
         </h1>
       </section>
@@ -26,10 +26,10 @@ export function CustomerFavoritesPage() {
   if (favorites.isError) {
     return (
       <section className={`${customerTheme.card} p-8`} role="alert">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
           Favorites
         </p>
-        <h1 className="mt-2 text-3xl font-semibold text-[#2F2925]">
+        <h1 className="mt-2 font-['Playfair_Display'] text-3xl font-normal text-[#2F2925]">
           Could not load favorites
         </h1>
         <p className="mt-3 max-w-2xl text-[#6F625B]">
@@ -46,13 +46,13 @@ export function CustomerFavoritesPage() {
   if (products.length === 0) {
     return (
       <section className={`${customerTheme.card} p-8 text-center`}>
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#F4EDE7] text-[#A37E6B]">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#fef7f0] text-[#9c6b54]">
           <Heart className="h-7 w-7" />
         </div>
-        <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+        <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
           Favorites
         </p>
-        <h1 className="mt-2 text-3xl font-semibold text-[#2F2925]">
+        <h1 className="mt-2 font-['Playfair_Display'] text-3xl font-normal text-[#2F2925]">
           Your wishlist is empty
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-[#6F625B]">
@@ -70,10 +70,10 @@ export function CustomerFavoritesPage() {
     <section className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
             Favorites
           </p>
-          <h1 className="mt-2 text-4xl font-semibold text-[#2F2925]">
+          <h1 className="mt-2 font-['Playfair_Display'] text-4xl font-normal text-[#2F2925]">
             Saved products
           </h1>
           <p className="mt-2 text-[#6F625B]">

@@ -37,7 +37,7 @@ function CompareToolbar() {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <BarChart2 className="h-5 w-5 shrink-0 text-[#A37E6B]" aria-hidden="true" />
+      <BarChart2 className="h-5 w-5 shrink-0 text-[#9c6b54]" aria-hidden="true" />
       <span className="font-semibold text-[#2F2925]">
         Comparing {productIds.length} product{productIds.length === 1 ? "" : "s"}
       </span>
@@ -62,9 +62,9 @@ export function CustomerComparePage() {
   if (productIds.length === 0) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-[#2F2925]">Compare products</h1>
+        <h1 className="text-3xl font-['Playfair_Display'] font-normal text-[#2F2925]">Compare products</h1>
         <div className={`${customerTheme.card} flex flex-col items-center gap-4 p-12 text-center`}>
-          <BarChart2 className="h-12 w-12 text-[#E4DCD1]" aria-hidden="true" />
+          <BarChart2 className="h-12 w-12 text-[#e8ddd5]" aria-hidden="true" />
           <p className="text-lg font-semibold text-[#2F2925]">No products selected</p>
           <p className="text-sm text-[#6F625B]">
             Select {COMPARE_MIN}–{COMPARE_MAX} products from the shop to compare them side by side.
@@ -72,7 +72,7 @@ export function CustomerComparePage() {
           <Link
             to={CUSTOMER_ROUTES.shop}
             className={cn(
-              "rounded-full bg-[#A37E6B] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#8F6E5D]",
+              "rounded-full bg-[#9c6b54] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#7d5643]",
               customerTheme.focusRing,
             )}
           >
@@ -86,10 +86,10 @@ export function CustomerComparePage() {
   if (productIds.length < COMPARE_MIN) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-[#2F2925]">Compare products</h1>
+        <h1 className="text-3xl font-['Playfair_Display'] font-normal text-[#2F2925]">Compare products</h1>
         <CompareToolbar />
         <div className={`${customerTheme.card} flex flex-col items-center gap-4 p-12 text-center`}>
-          <BarChart2 className="h-12 w-12 text-[#E4DCD1]" aria-hidden="true" />
+          <BarChart2 className="h-12 w-12 text-[#e8ddd5]" aria-hidden="true" />
           <p className="text-lg font-semibold text-[#2F2925]">
             Add {COMPARE_MIN - productIds.length} more product{COMPARE_MIN - productIds.length === 1 ? "" : "s"}
           </p>
@@ -99,7 +99,7 @@ export function CustomerComparePage() {
           <Link
             to={CUSTOMER_ROUTES.shop}
             className={cn(
-              "rounded-full bg-[#A37E6B] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#8F6E5D]",
+              "rounded-full bg-[#9c6b54] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#7d5643]",
               customerTheme.focusRing,
             )}
           >
@@ -113,7 +113,7 @@ export function CustomerComparePage() {
   if (compareQuery.isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-[#2F2925]">Compare products</h1>
+        <h1 className="text-3xl font-['Playfair_Display'] font-normal text-[#2F2925]">Compare products</h1>
         <CompareToolbar />
         <div
           className={`${customerTheme.card} min-h-[360px] animate-pulse p-8`}
@@ -126,7 +126,7 @@ export function CustomerComparePage() {
   if (compareQuery.isError) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-[#2F2925]">Compare products</h1>
+        <h1 className="text-3xl font-['Playfair_Display'] font-normal text-[#2F2925]">Compare products</h1>
         <CompareToolbar />
         <ApiErrorState
           title="Comparison unavailable"
@@ -142,7 +142,7 @@ export function CustomerComparePage() {
   if (products.length === 0) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-[#2F2925]">Compare products</h1>
+        <h1 className="text-3xl font-['Playfair_Display'] font-normal text-[#2F2925]">Compare products</h1>
         <CompareToolbar />
         <div className={`${customerTheme.card} flex flex-col items-center gap-4 p-12 text-center`}>
           <p className="text-lg font-semibold text-[#2F2925]">No products returned</p>
@@ -152,7 +152,7 @@ export function CustomerComparePage() {
           <Link
             to={CUSTOMER_ROUTES.shop}
             className={cn(
-              "rounded-full bg-[#A37E6B] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#8F6E5D]",
+              "rounded-full bg-[#9c6b54] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#7d5643]",
               customerTheme.focusRing,
             )}
           >
@@ -169,7 +169,7 @@ export function CustomerComparePage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold text-[#2F2925]">Compare products</h1>
+      <h1 className="text-3xl font-['Playfair_Display'] font-normal text-[#2F2925]">Compare products</h1>
 
       <div className={`${customerTheme.card} p-4`}>
         <CompareToolbar />
@@ -179,7 +179,7 @@ export function CustomerComparePage() {
         <table className="w-full min-w-[480px] border-collapse text-sm">
           <thead>
             <tr>
-              <th className="w-32 border-b border-[#E4DCD1] py-3 pr-4 text-left font-semibold text-[#6F625B] sm:w-44" scope="col">
+              <th className="w-32 border-b border-[#e8ddd5] py-3 pr-4 text-left font-semibold text-[#6F625B] sm:w-44" scope="col">
                 &nbsp;
               </th>
               {products.map((product) => {
@@ -187,12 +187,12 @@ export function CustomerComparePage() {
                 return (
                   <th
                     key={product.id}
-                    className="border-b border-[#E4DCD1] px-3 py-3 text-center font-medium"
+                    className="border-b border-[#e8ddd5] px-3 py-3 text-center font-medium"
                     scope="col"
                   >
                     <div className="flex flex-col items-center gap-2">
                       <div className="relative">
-                        <div className="mx-auto h-24 w-20 overflow-hidden rounded-2xl bg-[#F4EDE7]">
+                        <div className="mx-auto h-24 w-20 overflow-hidden rounded-2xl bg-[#fef7f0]">
                           {image ? (
                             <img
                               src={image}
@@ -201,7 +201,7 @@ export function CustomerComparePage() {
                               loading="lazy"
                             />
                           ) : (
-                            <div className="flex h-full items-center justify-center text-xs text-[#A37E6B]">
+                            <div className="flex h-full items-center justify-center text-xs text-[#9c6b54]">
                               No image
                             </div>
                           )}
@@ -211,7 +211,7 @@ export function CustomerComparePage() {
                           variant="ghost"
                           size="icon"
                           className={cn(
-                            "absolute -right-2 -top-2 h-6 w-6 rounded-full bg-white shadow-sm hover:bg-[#F4EDE7]",
+                            "absolute -right-2 -top-2 h-6 w-6 rounded-full bg-white shadow-sm hover:bg-[#fef7f0]",
                             customerTheme.focusRing,
                           )}
                           aria-label={`Remove ${product.name} from comparison`}
@@ -223,7 +223,7 @@ export function CustomerComparePage() {
                       <Link
                         to={CUSTOMER_ROUTES.productDetails(product.id)}
                         className={cn(
-                          "block max-w-[120px] font-semibold text-[#2F2925] hover:text-[#A37E6B]",
+                          "block max-w-[120px] font-semibold text-[#2F2925] hover:text-[#9c6b54]",
                           customerTheme.focusRing,
                         )}
                       >
@@ -242,7 +242,7 @@ export function CustomerComparePage() {
           </thead>
           <tbody>
             {visibleRows.map(({ label, render }) => (
-              <tr key={label} className="border-b border-[#E4DCD1] last:border-0">
+              <tr key={label} className="border-b border-[#e8ddd5] last:border-0">
                 <td className="py-3 pr-4 font-semibold text-[#6F625B]">{label}</td>
                 {products.map((product) => {
                   const value = render(product);
@@ -282,7 +282,7 @@ export function CustomerComparePage() {
                   <Link
                     to={CUSTOMER_ROUTES.productDetails(product.id)}
                     className={cn(
-                      "rounded-full bg-[#A37E6B] px-4 py-2 text-xs font-semibold text-white hover:bg-[#8F6E5D]",
+                      "rounded-full bg-[#9c6b54] px-4 py-2 text-xs font-semibold text-white hover:bg-[#7d5643]",
                       customerTheme.focusRing,
                     )}
                   >

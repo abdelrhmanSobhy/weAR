@@ -82,7 +82,7 @@ function ProductChip({ product }: { product: AiSuggestionProduct }) {
   const currency = product.resolvedProduct?.currency ?? "$";
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-[#E4DCD1] bg-[#FAF7F5] px-3 py-2">
+    <div className="flex items-center gap-2 rounded-lg border border-[#e8ddd5] bg-[#FAF7F5] px-3 py-2">
       {imageUrl ? (
         <img
           src={imageUrl}
@@ -92,7 +92,7 @@ function ProductChip({ product }: { product: AiSuggestionProduct }) {
         />
       ) : (
         <div
-          className="flex h-8 w-8 items-center justify-center rounded bg-[#F4EDE7] text-[#C4A99A]"
+          className="flex h-8 w-8 items-center justify-center rounded bg-[#fef7f0] text-[#C4A99A]"
           aria-hidden="true"
         >
           <Sparkles className="h-4 w-4" />
@@ -101,7 +101,7 @@ function ProductChip({ product }: { product: AiSuggestionProduct }) {
       <div className="min-w-0 flex-1">
         <span className="block truncate text-sm text-[#2F2925]">{name}</span>
         {product.slot && (
-          <span className="text-xs text-[#A37E6B]">{product.slot}</span>
+          <span className="text-xs text-[#9c6b54]">{product.slot}</span>
         )}
       </div>
       <div className="ml-auto shrink-0 text-right">
@@ -111,7 +111,7 @@ function ProductChip({ product }: { product: AiSuggestionProduct }) {
           </span>
         )}
         {product.stockStatus && (
-          <span className="block text-xs text-[#A37E6B]">{product.stockStatus}</span>
+          <span className="block text-xs text-[#9c6b54]">{product.stockStatus}</span>
         )}
       </div>
     </div>
@@ -168,7 +168,7 @@ function SuggestionCard({ suggestion, index }: SuggestionCardProps) {
       aria-label={suggestion.name ?? `AI suggestion ${index + 1}`}
     >
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
           Suggestion {index + 1}
         </p>
         {suggestion.name && (
@@ -180,13 +180,13 @@ function SuggestionCard({ suggestion, index }: SuggestionCardProps) {
           <p className="text-sm text-[#6F625B]">{suggestion.styleCategory}</p>
         )}
         {suggestion.occasion && (
-          <p className="mt-0.5 text-xs text-[#A37E6B]">{suggestion.occasion}</p>
+          <p className="mt-0.5 text-xs text-[#9c6b54]">{suggestion.occasion}</p>
         )}
         {suggestion.styleNotes && (
           <p className="mt-1 text-xs italic text-[#6F625B]">{suggestion.styleNotes}</p>
         )}
         {suggestion.matchPercentage !== null && suggestion.matchPercentage !== undefined && (
-          <p className="mt-1 text-xs font-medium text-[#A37E6B]">
+          <p className="mt-1 text-xs font-medium text-[#9c6b54]">
             {suggestion.matchPercentage}% match
           </p>
         )}
@@ -195,7 +195,7 @@ function SuggestionCard({ suggestion, index }: SuggestionCardProps) {
             {suggestion.styleTags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-[#F4EDE7] px-2 py-0.5 text-xs text-[#6F625B]"
+                className="rounded-full bg-[#fef7f0] px-2 py-0.5 text-xs text-[#6F625B]"
               >
                 {tag}
               </span>
@@ -252,7 +252,7 @@ function SuggestionCard({ suggestion, index }: SuggestionCardProps) {
           className="rounded-lg bg-green-50 p-3 text-center text-sm"
         >
           <p className="text-green-800">Saved to your outfits.</p>
-          <Button asChild variant="ghost" size="sm" className="mt-1 rounded-full text-[#A37E6B]">
+          <Button asChild variant="ghost" size="sm" className="mt-1 rounded-full text-[#9c6b54]">
             <Link to={CUSTOMER_ROUTES.outfits}>
               <ExternalLink className="mr-1 h-3 w-3" aria-hidden="true" />
               View Outfits
@@ -468,7 +468,7 @@ export function CustomerAiSuggestionsPage() {
     <section className="space-y-8">
       {/* Header */}
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
           AI Styling
         </p>
         <h1 className="mt-2 text-4xl font-semibold text-[#2F2925]">
@@ -520,7 +520,7 @@ export function CustomerAiSuggestionsPage() {
           aria-label="Generating AI outfit suggestions"
         >
           <Loader2
-            className="mx-auto h-10 w-10 animate-spin text-[#A37E6B]"
+            className="mx-auto h-10 w-10 animate-spin text-[#9c6b54]"
             aria-hidden="true"
           />
           <p className="mt-4 text-[#6F625B]">Our AI is crafting outfit suggestions for you…</p>
@@ -534,7 +534,7 @@ export function CustomerAiSuggestionsPage() {
           role="status"
           aria-label="No suggestions returned"
         >
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#F4EDE7] text-[#A37E6B]">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#fef7f0] text-[#9c6b54]">
             <Sparkles className="h-7 w-7" aria-hidden="true" />
           </div>
           <h2 className="mt-5 text-xl font-semibold text-[#2F2925]">

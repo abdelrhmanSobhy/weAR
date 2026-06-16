@@ -54,7 +54,7 @@ function CollectionCard({
       className={cn(
         customerTheme.card,
         "flex flex-col gap-4 p-5 cursor-pointer transition-all",
-        isSelected && "ring-2 ring-[#A37E6B]",
+        isSelected && "ring-2 ring-[#9c6b54]",
       )}
       aria-label={collection.name}
       aria-pressed={isSelected}
@@ -67,7 +67,7 @@ function CollectionCard({
           className="aspect-video w-full rounded-lg object-cover"
         />
       ) : (
-        <div className="flex aspect-video items-center justify-center rounded-lg bg-[#F4EDE7]">
+        <div className="flex aspect-video items-center justify-center rounded-lg bg-[#fef7f0]">
           <FolderOpen className="h-10 w-10 text-[#C4A99A]" aria-hidden="true" />
         </div>
       )}
@@ -80,7 +80,7 @@ function CollectionCard({
           </p>
         )}
         {collection.itemCount != null && (
-          <p className="mt-1 text-sm text-[#A37E6B]">
+          <p className="mt-1 text-sm text-[#9c6b54]">
             {collection.itemCount} {collection.itemCount === 1 ? "item" : "items"}
           </p>
         )}
@@ -91,7 +91,7 @@ function CollectionCard({
           type="button"
           variant="ghost"
           size="sm"
-          className="flex-1 justify-center rounded-full text-[#6F625B] hover:bg-[#F4EDE7] hover:text-[#2F2925]"
+          className="flex-1 justify-center rounded-full text-[#6F625B] hover:bg-[#fef7f0] hover:text-[#2F2925]"
           onClick={(e) => {
             e.stopPropagation();
             onRename(collection);
@@ -142,7 +142,7 @@ function CollectionItemCard({ item, onRemove }: CollectionItemCardProps) {
           className="aspect-square w-full rounded-lg object-cover"
         />
       ) : (
-        <div className="flex aspect-square items-center justify-center rounded-lg bg-[#F4EDE7]">
+        <div className="flex aspect-square items-center justify-center rounded-lg bg-[#fef7f0]">
           <Image className="h-8 w-8 text-[#C4A99A]" aria-hidden="true" />
         </div>
       )}
@@ -152,7 +152,7 @@ function CollectionItemCard({ item, onRemove }: CollectionItemCardProps) {
           {item.productName ?? "Product"}
         </p>
         {item.price != null && (
-          <p className="mt-0.5 text-sm text-[#A37E6B]">
+          <p className="mt-0.5 text-sm text-[#9c6b54]">
             ${item.price.toFixed(2)}
           </p>
         )}
@@ -521,7 +521,7 @@ function CollectionItemsPanel({ collection, onClose }: CollectionItemsPanelProps
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
               Collection
             </p>
             <h2 className="text-2xl font-semibold text-[#2F2925]">{collection.name}</h2>
@@ -585,14 +585,14 @@ function CollectionItemsPanel({ collection, onClose }: CollectionItemsPanelProps
                     className={cn(
                       "flex items-center gap-3 rounded-xl border p-2 text-left transition-colors",
                       selectedFavoriteId === product.id
-                        ? "border-[#A37E6B] bg-[#F4EDE7]"
-                        : "border-[#E4DCD1] hover:border-[#A37E6B] hover:bg-[#F4EDE7]/50",
+                        ? "border-[#9c6b54] bg-[#fef7f0]"
+                        : "border-[#e8ddd5] hover:border-[#9c6b54] hover:bg-[#fef7f0]/50",
                     )}
                   >
                     {(product.primaryImageUrl ?? product.imageUrl) ? (
                       <img src={product.primaryImageUrl ?? product.imageUrl ?? ""} alt="" className="h-10 w-10 flex-shrink-0 rounded-lg object-cover" />
                     ) : (
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#F4EDE7]">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#fef7f0]">
                         <Image className="h-5 w-5 text-[#C4A99A]" aria-hidden="true" />
                       </div>
                     )}
@@ -669,7 +669,7 @@ function CollectionItemsPanel({ collection, onClose }: CollectionItemsPanelProps
             role="status"
             aria-label="No items in collection"
           >
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#F4EDE7] text-[#A37E6B]">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#fef7f0] text-[#9c6b54]">
               <FolderOpen className="h-6 w-6" aria-hidden="true" />
             </div>
             <h3 className="mt-4 text-lg font-semibold text-[#2F2925]">
@@ -825,7 +825,7 @@ export function CustomerWardrobeCollectionsPage() {
         aria-busy="true"
         aria-label="Loading collections"
       >
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
           Wardrobe
         </p>
         <h1 className="mt-2 text-3xl font-semibold text-[#2F2925]">
@@ -839,7 +839,7 @@ export function CustomerWardrobeCollectionsPage() {
   if (query.isError) {
     return (
       <section className={cn(customerTheme.card, "p-8")} role="alert">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
           Wardrobe
         </p>
         <h1 className="mt-2 text-3xl font-semibold text-[#2F2925]">
@@ -948,7 +948,7 @@ export function CustomerWardrobeCollectionsPage() {
           {/* Header */}
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
                 Wardrobe
               </p>
               <h1 className="mt-2 text-4xl font-semibold text-[#2F2925]">
@@ -990,10 +990,10 @@ export function CustomerWardrobeCollectionsPage() {
               role="status"
               aria-label="No collections"
             >
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#F4EDE7] text-[#A37E6B]">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#fef7f0] text-[#9c6b54]">
                 <FolderOpen className="h-7 w-7" aria-hidden="true" />
               </div>
-              <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+              <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
                 Wardrobe
               </p>
               <h2 className="mt-2 text-2xl font-semibold text-[#2F2925]">
