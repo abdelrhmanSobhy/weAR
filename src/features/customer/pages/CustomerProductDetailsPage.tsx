@@ -192,7 +192,7 @@ export function CustomerProductDetailsPage() {
                       : "border-transparent hover:border-[#e8ddd5]",
                     customerTheme.focusRing,
                   )}
-                  aria-label={`View image ${i + 1}`}
+                  aria-label={`Show product image ${i + 1}`}
                   aria-pressed={i === selectedImage}
                 >
                   <img src={img.url} alt="" className="h-full w-full object-cover" />
@@ -376,7 +376,7 @@ export function CustomerProductDetailsPage() {
                   : "border-[#e8ddd5] text-[#6F625B] hover:border-[#9c6b54] hover:text-[#9c6b54]",
                 customerTheme.focusRing,
               )}
-              aria-label={product.isFavorite ? `Remove from favorites` : `Add to favorites`}
+              aria-label={product.isFavorite ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`}
             >
               <Heart className={cn("h-4 w-4", product.isFavorite && "fill-current")} />
               {product.isFavorite ? "Favorited" : "Favorite"}
@@ -517,7 +517,7 @@ export function CustomerProductDetailsPage() {
       )}
       {!similarQuery.isError && similarProducts.length > 0 && (
         <ProductRail
-          title="Similar Products"
+          title="Similar products"
           products={similarProducts}
           isLoading={similarQuery.isLoading}
           onToggleFavorite={(id) => toggleFavorite.mutate(id)}

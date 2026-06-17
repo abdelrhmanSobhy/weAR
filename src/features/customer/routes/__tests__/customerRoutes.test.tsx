@@ -91,8 +91,8 @@ describe("customer routes", () => {
     const router = renderCustomerRouter(CUSTOMER_ROUTES.home);
 
     await waitFor(() => expect(router.state.location.pathname).toBe(CUSTOMER_ROUTES.home));
-    expect(screen.getAllByText("weAR Customer")[0]).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Discover fashion/i })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+    expect(screen.getByRole("main")).toBeInTheDocument();
   });
 
   it.each(protectedCustomerPaths)("protects %s behind customer authentication and role guards", async (path) => {

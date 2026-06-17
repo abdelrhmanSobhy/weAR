@@ -279,7 +279,7 @@ export function CustomerLayout() {
         {/* Mobile menu */}
         {mobileOpen && (
           <div className={cn("border-t border-[#e8ddd5] lg:hidden", customerTheme.navBg)}>
-            <div className={cn("flex flex-col gap-0.5 py-4", customerTheme.container)}>
+            <nav aria-label="Mobile navigation" className={cn("flex flex-col gap-0.5 py-4", customerTheme.container)}>
               {/* Main nav links */}
               {NAV_LINKS.map((item) => (
                 <NavLink
@@ -336,7 +336,7 @@ export function CustomerLayout() {
                 <LogOut className="h-4 w-4" />
                 Sign out
               </button>
-            </div>
+            </nav>
           </div>
         )}
       </header>
