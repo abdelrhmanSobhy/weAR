@@ -12,7 +12,7 @@ import { customerTheme } from "@/features/customer/styles/customerTheme";
 import { TryOnViewerErrorBoundary } from "@/features/customer/try-on/components/TryOnViewerErrorBoundary";
 import { useCreateTryOnSession } from "@/features/customer/try-on/hooks/tryOn.queries";
 import { TRY_ON_SESSION_TYPES, initialTryOnFlowState, tryOnFlowReducer } from "@/features/customer/try-on/types/tryOn";
-import { getSafeActiveAvatarModelUrl, toSafeModelUrl } from "@/features/customer/try-on/utils/modelUrl";
+import { toSafeModelUrl } from "@/features/customer/try-on/utils/modelUrl";
 import { appendReturnToCustomerRoute } from "@/features/customer/utils/customerReturnRoute";
 import { cn } from "@/lib/utils";
 
@@ -38,9 +38,9 @@ const errorMessage = (error: unknown) => {
   return "Try-on failed. Your product and selections are preserved so you can retry.";
 };
 
-const stagedMessages = ["Preparing your 3D avatar", "Generating the garment model", "Aligning avatar and garment"];
+const stagedMessages = ["Preparing your avatar", "Generating the garment model", "Aligning avatar and garment"];
 const LazyTryOn3DViewer = lazy(() => import("@/features/customer/try-on/components/TryOn3DViewer"));
-type ResultView = "product" | "3d";
+type ResultView = "2d" | "3d";
 type ViewerStatus = "idle" | "loading" | "ready" | "error";
 
 export function CustomerTryOnPage() {
@@ -58,16 +58,14 @@ export function CustomerTryOnPage() {
   const createSession = useCreateTryOnSession();
   const inFlight = useRef(false);
   const [stageIndex, setStageIndex] = useReducer((value: number) => (value + 1) % stagedMessages.length, 0);
-  const [resultView, setResultView] = useState<ResultView>("3d");
+  const [resultView, setResultView] = useState<ResultView>("2d");
   const [viewerStatus, setViewerStatus] = useState<ViewerStatus>("idle");
   const [viewerRetryKey, setViewerRetryKey] = useState(0);
   const addToCart = useCartStore((store) => store.addItem);
   const [tryOnCartMessage, setTryOnCartMessage] = useState<string | null>(null);
 
-  const safeAvatarModelUrl = getSafeActiveAvatarModelUrl(avatar.data);
-  const resultModelUrl = toSafeModelUrl(state.session?.resultImageUrl);
-  const selectedModelUrl = resultModelUrl ?? safeAvatarModelUrl;
-  const hasTryOnModel = Boolean(resultModelUrl);
+  const safe3dResultUrl = toSafeModelUrl(state.session?.result3dModelUrl ?? state.session?.model3dUrl);
+  const selectedImage = product.data ? imageFor(product.data) : null;
 
   useEffect(() => {
     if (state.status !== "processing") return;
@@ -82,21 +80,20 @@ export function CustomerTryOnPage() {
       dispatch({ type: "RETRYABLE_ERROR", message: errorMessage(avatar.error) });
       return;
     }
-    if (!avatar.data || !safeAvatarModelUrl) {
+    if (!avatar.data) {
       dispatch({
         type: "AVATAR_MISSING",
-        message: "The current backend try-on pipeline needs a photo-generated 3D avatar before it can apply garments.",
+        message: "Create an avatar before trying on products.",
       });
       navigate(avatarPhotoRoute);
       return;
     }
     dispatch({ type: "AVATAR_READY", productId: state.productId });
-  }, [avatar.data, avatar.error, avatar.isError, avatar.isLoading, avatarPhotoRoute, navigate, safeAvatarModelUrl, state.productId, state.status]);
+  }, [avatar.data, avatar.error, avatar.isError, avatar.isLoading, avatarPhotoRoute, navigate, state.productId, state.status]);
 
   const colors = product.data?.colors ?? [];
   const sizes = product.data?.sizes ?? [];
-  const variantsValid = (!colors.length || !!state.selectedColor) && (!sizes.length || !!state.selectedSize) && !!state.productId && !!safeAvatarModelUrl;
-  const selectedImage = product.data ? imageFor(product.data) : null;
+  const variantsValid = (!colors.length || !!state.selectedColor) && (!sizes.length || !!state.selectedSize) && !!state.productId;
 
   const submit = () => {
     if (!state.productId || !variantsValid || inFlight.current) return;
@@ -104,11 +101,11 @@ export function CustomerTryOnPage() {
     dispatch({ type: "SUBMIT" });
     dispatch({ type: "PROCESSING" });
     createSession.mutate(
-      { productId: state.productId, sessionType: TRY_ON_SESSION_TYPES.model3D, avatarId: avatar.data?.id ?? null },
+      { productId: state.productId, sessionType: TRY_ON_SESSION_TYPES.overlay2D, avatarId: avatar.data?.id ?? null },
       {
         onSuccess: (session) => {
           inFlight.current = false;
-          setResultView(toSafeModelUrl(session.resultImageUrl) ? "3d" : "product");
+          setResultView("2d");
           setViewerStatus("idle");
           dispatch({ type: "COMPLETE_2D", session });
         },
@@ -125,12 +122,12 @@ export function CustomerTryOnPage() {
     [product.data, state.selectedColor, state.selectedSize],
   );
 
-  const selectProductImage = () => setResultView("product");
   const select3d = () => {
-    if (!selectedModelUrl) return;
+    if (!safe3dResultUrl) return;
     setResultView("3d");
     if (viewerStatus === "idle") setViewerStatus("loading");
   };
+
   const retryViewer = () => {
     setViewerStatus("loading");
     setViewerRetryKey((value) => value + 1);
@@ -147,7 +144,7 @@ export function CustomerTryOnPage() {
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-white/15"><DoorOpen className="h-8 w-8" /></div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-white/80">Private fitting room</p>
           <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">Step behind the curtain</h1>
-          <p className="mt-4 text-base text-white/85 sm:text-lg">Enter a 3D fitting experience using your photo-generated avatar and selected garment.</p>
+          <p className="mt-4 text-base text-white/85 sm:text-lg">Enter a fitting experience using your avatar and selected garment.</p>
           <Button type="button" disabled={state.status === "checking-avatar" || avatar.isLoading} onClick={() => dispatch({ type: "ENTER_ROOM" })} className="mt-8 rounded-full bg-white px-8 text-[#7A2527] hover:bg-[#F4EDE7]">
             <Sparkles className="mr-2 h-4 w-4" />{state.status === "checking-avatar" ? "Checking avatar…" : "Enter Room"}
           </Button>
@@ -173,7 +170,7 @@ export function CustomerTryOnPage() {
             <div className="text-center">
               <Shirt className="mx-auto h-24 w-24 text-[#8F6E5D]" />
               <h1 className="mt-4 text-3xl font-semibold text-[#2F2925]">Customer Try-on</h1>
-              <p className="mt-2 text-[#6F625B]">A 3D try-on scene will render after submission.</p>
+              <p className="mt-2 text-[#6F625B]">A try-on result will appear after submission.</p>
             </div>
           </div>
 
@@ -185,8 +182,7 @@ export function CustomerTryOnPage() {
               <div className="text-lg"><PriceDisplay price={product.data.price} discountedPrice={product.data.discountedPrice} currency={product.data.currency} /></div>
               {colors.length > 0 && <fieldset><legend className="font-semibold">Color</legend><div className="mt-2 flex flex-wrap gap-2">{colors.map((color) => <button key={color} type="button" onClick={() => dispatch({ type: "SELECT_COLOR", color })} aria-pressed={state.selectedColor === color} className={cn("rounded-full border px-4 py-2 text-sm", state.selectedColor === color ? "border-[#A37E6B] bg-[#F4EDE7]" : "border-[#E4DCD1]", customerTheme.focusRing)}>{color}</button>)}</div></fieldset>}
               {sizes.length > 0 && <fieldset><legend className="font-semibold">Size</legend><div className="mt-2 flex flex-wrap gap-2">{sizes.map((size) => <button key={size} type="button" onClick={() => dispatch({ type: "SELECT_SIZE", size })} aria-pressed={state.selectedSize === size} className={cn("rounded-full border px-4 py-2 text-sm font-semibold", state.selectedSize === size ? "border-[#A37E6B] bg-[#A37E6B] text-white" : "border-[#E4DCD1]", customerTheme.focusRing)}>{size}</button>)}</div></fieldset>}
-              {!safeAvatarModelUrl && <p className="rounded-2xl bg-[#F4EDE7] p-3 text-sm text-[#6F625B]">This backend requires a photo-generated 3D avatar for try-on. Use the photo avatar flow first.</p>}
-              <Button type="button" disabled={!variantsValid || createSession.isPending || state.status === "processing"} onClick={submit} className={cn("w-full rounded-full bg-[#A37E6B] text-white hover:bg-[#8F6E5D]", customerTheme.focusRing)}>Try Product in 3D</Button>
+              <Button type="button" disabled={!variantsValid || createSession.isPending || state.status === "processing"} onClick={submit} className={cn("w-full rounded-full bg-[#A37E6B] text-white hover:bg-[#8F6E5D]", customerTheme.focusRing)}>Try Product</Button>
             </> : <div><h2 className="font-semibold">No product selected</h2><p className="text-sm text-[#6F625B]">Open a product details page, then choose Try On.</p></div>}
           </aside>
         </div>
@@ -196,29 +192,30 @@ export function CustomerTryOnPage() {
 
       {state.status === "error-retryable" && <div className={`${customerTheme.softCard} p-5`} role="alert"><h2 className="font-semibold text-[#2F2925]">Try-on needs another attempt</h2><p className="mt-1 text-sm text-[#6F625B]">{state.errorMessage}</p><Button type="button" onClick={submit} disabled={!variantsValid || createSession.isPending} className="mt-4 rounded-full"><RefreshCcw className="mr-2 h-4 w-4" />Retry with saved selections</Button></div>}
 
-      {state.status === "error-avatar-required" && <div className={`${customerTheme.softCard} p-5`} role="alert"><h2 className="font-semibold">3D avatar required</h2><p className="text-sm text-[#6F625B]">Create or update your avatar from a full-body photo, then return to this fitting room.</p><Button type="button" onClick={() => navigate(avatarPhotoRoute)} className="mt-4 rounded-full">Create photo avatar</Button></div>}
+      {state.status === "error-avatar-required" && <div className={`${customerTheme.softCard} p-5`} role="alert"><h2 className="font-semibold">Avatar required</h2><p className="text-sm text-[#6F625B]">Create or update your avatar, then return to this fitting room.</p><Button type="button" onClick={() => navigate(avatarPhotoRoute)} className="mt-4 rounded-full">Create avatar</Button></div>}
 
       {state.status === "completed-2d" && state.session && <div className={`${customerTheme.card} grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_360px]`}>
         <div className="space-y-4">
           <div role="tablist" aria-label="Try-on result views" className="inline-flex rounded-full border border-[#E4DCD1] bg-[#F4EDE7] p-1">
-            <button type="button" role="tab" aria-selected={resultView === "3d"} aria-controls="try-on-3d-panel" onClick={select3d} disabled={!selectedModelUrl} className={cn("rounded-full px-4 py-2 text-sm font-semibold", resultView === "3d" ? "bg-white text-[#2F2925] shadow-sm" : "text-[#6F625B]", customerTheme.focusRing)}>3D Result</button>
-            <button type="button" role="tab" aria-selected={resultView === "product"} aria-controls="try-on-product-panel" onClick={selectProductImage} className={cn("rounded-full px-4 py-2 text-sm font-semibold", resultView === "product" ? "bg-white text-[#2F2925] shadow-sm" : "text-[#6F625B]", customerTheme.focusRing)}>Product Image</button>
+            <button type="button" role="tab" aria-selected={resultView === "2d"} aria-controls="try-on-2d-panel" onClick={() => setResultView("2d")} className={cn("rounded-full px-4 py-2 text-sm font-semibold", resultView === "2d" ? "bg-white text-[#2F2925] shadow-sm" : "text-[#6F625B]", customerTheme.focusRing)}>2D View</button>
+            {safe3dResultUrl && <button type="button" role="tab" aria-selected={resultView === "3d"} aria-controls="try-on-3d-panel" onClick={select3d} className={cn("rounded-full px-4 py-2 text-sm font-semibold", resultView === "3d" ? "bg-white text-[#2F2925] shadow-sm" : "text-[#6F625B]", customerTheme.focusRing)}>3D View</button>}
           </div>
 
-          {resultView === "3d" && selectedModelUrl ? <div id="try-on-3d-panel" role="tabpanel" aria-label={hasTryOnModel ? "3D garment try-on result" : "Your 3D avatar"} className="space-y-3"><Suspense fallback={<div className="rounded-3xl bg-[#F4EDE7] p-10 text-center" role="status" aria-live="polite"><h3 className="text-lg font-semibold">Loading 3D view</h3><p className="mt-2 text-sm text-[#6F625B]">Preparing interactive model.</p></div>}><TryOnViewerErrorBoundary resetKey={viewerRetryKey} onError={() => setViewerStatus("error")} fallback={<div className="rounded-3xl bg-[#F4EDE7] p-6" role="alert"><p className="font-semibold">3D view is unavailable.</p><Button type="button" onClick={retryViewer} className="mt-4 rounded-full">Retry 3D</Button></div>}><LazyTryOn3DViewer key={`${viewerRetryKey}-${selectedModelUrl}`} modelUrl={selectedModelUrl} label={hasTryOnModel ? "3D garment try-on result" : "Your 3D avatar"} onLoading={() => setViewerStatus("loading")} onReady={() => setViewerStatus("ready")} onError={() => setViewerStatus("error")} /></TryOnViewerErrorBoundary></Suspense>{viewerStatus === "loading" && <p role="status" aria-live="polite" className="text-sm font-medium text-[#6F625B]">Loading 3D view. Preparing interactive model.</p>}{viewerStatus === "ready" && <p className="text-sm font-medium text-[#6F625B]">3D view ready.</p>}{viewerStatus === "error" && <div role="alert" className="rounded-2xl bg-[#F4EDE7] p-4 text-sm"><p className="font-semibold">3D view is unavailable.</p><Button type="button" variant="outline" onClick={retryViewer} className="mt-3 rounded-full">Retry 3D</Button></div>}</div> : <div id="try-on-product-panel" role="tabpanel" aria-label="Product image fallback">{selectedImage ? <img src={selectedImage} alt={product.data?.name ?? "selected product"} className="max-h-[640px] w-full rounded-3xl object-contain bg-[#F4EDE7]" /> : <div className="rounded-3xl bg-[#F4EDE7] p-10 text-center">Product image unavailable.</div>}</div>}
+          {resultView === "2d" && <div id="try-on-2d-panel" role="tabpanel" aria-label="2D try-on result">{state.session.resultImageUrl ? <img src={state.session.resultImageUrl} alt="2D try-on result" className="max-h-[640px] w-full rounded-3xl object-contain bg-[#F4EDE7]" /> : selectedImage ? <img src={selectedImage} alt={product.data?.name ?? "selected product"} className="max-h-[640px] w-full rounded-3xl object-contain bg-[#F4EDE7]" /> : <div className="rounded-3xl bg-[#F4EDE7] p-10 text-center">Product image unavailable.</div>}</div>}
+
+          {resultView === "3d" && safe3dResultUrl && <div id="try-on-3d-panel" role="tabpanel" aria-label="3D garment try-on result" className="space-y-3"><Suspense fallback={<div className="rounded-3xl bg-[#F4EDE7] p-10 text-center" role="status" aria-live="polite"><h3 className="text-lg font-semibold">Loading 3D view</h3><p className="mt-2 text-sm text-[#6F625B]">Preparing interactive model.</p></div>}><TryOnViewerErrorBoundary resetKey={viewerRetryKey} onError={() => setViewerStatus("error")} fallback={<div className="rounded-3xl bg-[#F4EDE7] p-6" role="alert"><p className="font-semibold">3D view is unavailable.</p><Button type="button" onClick={retryViewer} className="mt-4 rounded-full">Retry 3D</Button></div>}><LazyTryOn3DViewer key={`${viewerRetryKey}-${safe3dResultUrl}`} modelUrl={safe3dResultUrl} label="3D garment try-on result" onLoading={() => setViewerStatus("loading")} onReady={() => setViewerStatus("ready")} onError={() => setViewerStatus("error")} /></TryOnViewerErrorBoundary></Suspense>{viewerStatus === "loading" && <p role="status" aria-live="polite" className="text-sm font-medium text-[#6F625B]">Loading 3D view. Preparing interactive model.</p>}{viewerStatus === "ready" && <p className="text-sm font-medium text-[#6F625B]">3D view ready.</p>}{viewerStatus === "error" && <div role="alert" className="rounded-2xl bg-[#F4EDE7] p-4 text-sm"><p className="font-semibold">3D view is unavailable.</p><Button type="button" variant="outline" onClick={retryViewer} className="mt-3 rounded-full">Retry 3D</Button></div>}</div>}
         </div>
 
         <div className="space-y-4">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">{hasTryOnModel ? "3D try-on complete" : "Session complete"}</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">2D result complete</p>
           <h2 className="text-2xl font-semibold">{product.data?.name ?? "Selected product"}</h2>
           <p className="text-[#6F625B]">{selectedSummary}</p>
-          {!hasTryOnModel && <p className="rounded-2xl bg-[#F4EDE7] p-3 text-sm text-[#6F625B]">The backend did not return a 3D result URL for this session, so the product image is shown as a fallback.</p>}
           {(state.session.sizeRecommendation || state.session.recommendedSize) && <p className="rounded-2xl bg-[#F4EDE7] p-3 font-semibold">Recommended size: {state.session.sizeRecommendation ?? state.session.recommendedSize}</p>}
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={submit} disabled={createSession.isPending} className="rounded-full">Retry</Button>
             <Button type="button" variant="outline" onClick={() => navigate(CUSTOMER_ROUTES.shop)} className="rounded-full">Change Product</Button>
             {state.productId && <Button type="button" variant="outline" onClick={() => navigate(CUSTOMER_ROUTES.productDetails(state.productId ?? ""))} className="rounded-full">Return to Product Details</Button>}
-            {product.data && <Button type="button" className={cn("rounded-full bg-[#A37E6B] text-white hover:bg-[#8F6E5D]", customerTheme.focusRing)} onClick={() => { addToCart({ productId: product.data.id, productName: product.data.name, productImage: imageFor(product.data), brand: product.data.brand ?? null, unitPrice: product.data.price, discountedPrice: product.data.discountedPrice ?? null, selectedSize: state.selectedSize ?? null, selectedColor: state.selectedColor ?? null, productRoute: CUSTOMER_ROUTES.productDetails(product.data.id), tryOnResultImage: hasTryOnModel ? null : selectedImage }); setTryOnCartMessage(`Added to cart: ${product.data.name}.`); }} aria-label={`Add ${product.data.name} to cart`}><ShoppingBag className="mr-2 h-4 w-4" />Add to Cart</Button>}
+            {product.data && <Button type="button" className={cn("rounded-full bg-[#A37E6B] text-white hover:bg-[#8F6E5D]", customerTheme.focusRing)} onClick={() => { addToCart({ productId: product.data.id, productName: product.data.name, productImage: imageFor(product.data), brand: product.data.brand ?? null, unitPrice: product.data.price, discountedPrice: product.data.discountedPrice ?? null, selectedSize: state.selectedSize ?? null, selectedColor: state.selectedColor ?? null, productRoute: CUSTOMER_ROUTES.productDetails(product.data.id), tryOnResultImage: (state.session?.resultImageUrl as string | null | undefined) ?? selectedImage ?? null }); setTryOnCartMessage(`Added to cart: ${product.data.name}.`); }} aria-label={`Add ${product.data.name} to cart`}><ShoppingBag className="mr-2 h-4 w-4" />Add to Cart</Button>}
           </div>
         </div>
       </div>}
