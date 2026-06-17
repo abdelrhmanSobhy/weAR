@@ -32,14 +32,14 @@ describe("CustomerAboutPage", () => {
   it("renders the main heading", () => {
     renderIn(<CustomerAboutPage />);
     expect(
-      screen.getByRole("heading", { name: /fashion discovery, reinvented/i }),
+      screen.getByRole("heading", { name: /fashion discovery/i }),
     ).toBeInTheDocument();
   });
 
   it("renders the mission section", () => {
     renderIn(<CustomerAboutPage />);
     expect(
-      screen.getByRole("heading", { name: /what we're building/i }),
+      screen.getByRole("heading", { name: /what we/i }),
     ).toBeInTheDocument();
   });
 

@@ -79,31 +79,66 @@ describe("Command 07 customer pages", () => {
     expect(screen.getByText("No avatar yet")).toBeInTheDocument();
     hooks.useCustomerAvatar.mockReturnValue({ isLoading: false, isError: false, data: { id: "av1", customerId: "c1", avatar3dModelUrl: null, measurements: { heightCm: 170, chestCm: null } } });
     renderPage(<CustomerAvatarPage />, "/customer/avatar");
-    expect(screen.getByText(/3D model is not available yet/)).toBeInTheDocument();
+    expect(screen.getByText(/3D model is not yet available/)).toBeInTheDocument();
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 
   it("uses create versus update behavior on manual measurements", () => {
     renderPage(<CustomerAvatarManualPage />, "/customer/avatar/manual");
     fireEvent.change(screen.getByLabelText(/Height/), { target: { value: "180" } });
+    fireEvent.change(screen.getByLabelText(/Weight/), { target: { value: "75" } });
     fireEvent.click(screen.getByRole("button", { name: "Create avatar" }));
-    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ heightCm: 180 }), expect.any(Object));
-    hooks.useCustomerAvatar.mockReturnValue({ isLoading: false, isError: false, data: { id: "av1", customerId: "c1", avatar3dModelUrl: null, measurements: { heightCm: 170 } } });
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ heightCm: 180, weightKg: 75 }), expect.any(Object));
+    hooks.useCustomerAvatar.mockReturnValue({ isLoading: false, isError: false, data: { id: "av1", customerId: "c1", avatar3dModelUrl: null, measurements: { heightCm: 170, weightKg: 70 } } });
     renderPage(<CustomerAvatarManualPage />, "/customer/avatar/manual");
     expect(screen.getByRole("button", { name: "Update measurements" })).toBeInTheDocument();
   });
 
-  it("validates photo type, height, FormData submission and null model extraction", async () => {
-    hooks.useExtractCustomerAvatarFromImage.mockReturnValue({ mutate: (_payload: unknown, opts: { onSuccess: (data: unknown) => void }) => opts.onSuccess({ id: "av1", customerId: "c1", avatar3dModelUrl: null, measurements: { heightCm: 177 } }), isPending: false, isError: false });
+  it("validates photo type, requires both images, and surfaces null-model extraction", async () => {
+    const calls: unknown[] = [];
+    hooks.useExtractCustomerAvatarFromImage.mockReturnValue({ mutate: (payload: unknown, opts: { onSuccess: (data: unknown) => void }) => { calls.push(payload); opts.onSuccess({ id: "av1", customerId: "c1", avatar3dModelUrl: null, measurements: { heightCm: 177 } }); }, isPending: false, isError: false });
     renderPage(<CustomerAvatarPhotoPage />, "/customer/avatar/photo");
-    fireEvent.change(screen.getByLabelText("Full-body image"), { target: { files: [new File(["x"], "bad.webp", { type: "image/webp" })] } });
+    fireEvent.change(screen.getByLabelText("Front full-body image"), { target: { files: [new File(["x"], "bad.webp", { type: "image/webp" })] } });
     expect(screen.getByRole("alert")).toHaveTextContent(/JPEG or PNG/);
-    fireEvent.change(screen.getByLabelText("Full-body image"), { target: { files: [new File(["x"], "avatar.png", { type: "image/png" })] } });
+    fireEvent.change(screen.getByLabelText("Front full-body image"), { target: { files: [new File(["x"], "front.png", { type: "image/png" })] } });
+    fireEvent.change(screen.getByLabelText("Height in centimeters"), { target: { value: "177" } });
+    // With only the front image, the submit button stays disabled.
+    expect(screen.getByRole("button", { name: "Extract measurements" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Side full-body image"), { target: { files: [new File(["x"], "side.jpg", { type: "image/jpeg" })] } });
+    expect(screen.getByRole("button", { name: "Extract measurements" })).not.toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Extract measurements" }));
-    expect(screen.getByText(/Height/)).toBeInTheDocument();
+    expect(calls[0]).toMatchObject({ frontImageFile: expect.any(File), sideImageFile: expect.any(File), heightCm: 177 });
+    await waitFor(() => expect(screen.getByText(/no 3D avatar model was returned/)).toBeInTheDocument());
+  });
+
+  it("displays backend FrontImageFile/SideImageFile validation errors", () => {
+    const axiosError = { isAxiosError: true, response: { status: 400, data: { errors: { FrontImageFile: ["The FrontImageFile field is required."], SideImageFile: ["The SideImageFile field is required."] } } } };
+    hooks.useExtractCustomerAvatarFromImage.mockReturnValue({ mutate: (_payload: unknown, opts: { onError: (e: unknown) => void }) => opts.onError(axiosError), isPending: false, isError: true });
+    renderPage(<CustomerAvatarPhotoPage />, "/customer/avatar/photo");
+    fireEvent.change(screen.getByLabelText("Front full-body image"), { target: { files: [new File(["x"], "front.png", { type: "image/png" })] } });
+    fireEvent.change(screen.getByLabelText("Side full-body image"), { target: { files: [new File(["x"], "side.jpg", { type: "image/jpeg" })] } });
     fireEvent.change(screen.getByLabelText("Height in centimeters"), { target: { value: "177" } });
     fireEvent.click(screen.getByRole("button", { name: "Extract measurements" }));
-    await waitFor(() => expect(screen.getByText(/3D model URL was not provided/)).toBeInTheDocument());
+    expect(screen.getByText(/The FrontImageFile field is required/)).toBeInTheDocument();
+    expect(screen.getByText(/The SideImageFile field is required/)).toBeInTheDocument();
+  });
+
+  it("shows the photo-avatar info note on the manual page for 3D try-on", () => {
+    renderPage(<CustomerAvatarManualPage />, "/customer/avatar/manual?returnTo=%2Fcustomer%2Ftry-on");
+    expect(screen.getByText(/3D try-on requires a photo-generated avatar/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Create photo avatar instead/ })).toBeInTheDocument();
+  });
+
+  it("shows a backend error code message when AI extraction fails", () => {
+    const axiosError = { isAxiosError: true, response: { status: 422, data: { code: "AI_EXTRACTION_FAILED", message: "AI could not detect a full body.", traceId: "trace-123" } } };
+    hooks.useExtractCustomerAvatarFromImage.mockReturnValue({ mutate: (_payload: unknown, opts: { onError: (e: unknown) => void }) => opts.onError(axiosError), isPending: false, isError: true });
+    renderPage(<CustomerAvatarPhotoPage />, "/customer/avatar/photo");
+    fireEvent.change(screen.getByLabelText("Front full-body image"), { target: { files: [new File(["x"], "front.png", { type: "image/png" })] } });
+    fireEvent.change(screen.getByLabelText("Side full-body image"), { target: { files: [new File(["x"], "side.jpg", { type: "image/jpeg" })] } });
+    fireEvent.change(screen.getByLabelText("Height in centimeters"), { target: { value: "177" } });
+    fireEvent.click(screen.getByRole("button", { name: "Extract measurements" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(/AI could not detect a full body/);
+    expect(screen.getByText(/Reference: trace-123/)).toBeInTheDocument();
   });
 
   it("allows only safe internal customer return routes", () => {

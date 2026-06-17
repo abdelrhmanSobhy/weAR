@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/features/auth/useAuthStore";
@@ -14,6 +14,8 @@ import {
   isSuccessfulResponse,
   type CustomerGender,
 } from "@/features/customer/api/customerAuth.api";
+import { customerTheme } from "@/features/customer/styles/customerTheme";
+import { cn } from "@/lib/utils";
 
 type SignupStep = 1 | 2;
 
@@ -35,306 +37,177 @@ export function CustomerSignupPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleRegister = async (e: FormEvent) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMsg(null);
     setMessage(null);
     setIsLoading(true);
-
     try {
-      const response = await customerAuthApi.register({
-        fullName,
-        email,
-        password,
-        phoneNumber,
-      });
+      const response = await customerAuthApi.register({ fullName, email, password, phoneNumber });
       const nextTempToken = extractTempStepToken(response);
-
       if (nextTempToken) {
         setTempStepToken(nextTempToken);
         setStep(2);
-        setMessage("تم إنشاء الخطوة الأولى بنجاح. أكمل بيانات الملف الشخصي.");
+        setMessage("Step 1 complete — finish your profile to get started.");
       } else {
-        setErrorMsg(response.message || "تعذر الحصول على TempStepToken.");
+        setErrorMsg(response.message || "Could not retrieve registration token.");
       }
     } catch (error: unknown) {
-      setErrorMsg(
-        normalizeCustomerApiError(error, "حدث خطأ أثناء إنشاء الحساب. حاول مرة أخرى.").message,
-      );
+      setErrorMsg(normalizeCustomerApiError(error, "Registration failed. Please try again.").message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCompleteProfile = async (e: FormEvent) => {
+  const handleCompleteProfile = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMsg(null);
     setMessage(null);
-
     if (!tempStepToken) {
-      setErrorMsg("TempStepToken غير متوفر. يرجى تنفيذ الخطوة الأولى مرة أخرى.");
+      setErrorMsg("Session expired. Please restart registration.");
       setStep(1);
       return;
     }
-
     if (createAvatar === null) {
-      setErrorMsg("يرجى اختيار هل تريد إنشاء Avatar الآن أم لا.");
+      setErrorMsg("Please choose whether to create an avatar now.");
       return;
     }
-
     setIsLoading(true);
-
     try {
-      const response = await customerAuthApi.completeProfile({
-        tempStepToken,
-        age: Number(age),
-        gender,
-        createAvatar,
-      });
+      const response = await customerAuthApi.completeProfile({ tempStepToken, age: Number(age), gender, createAvatar });
       const authData = extractCustomerAuthData(response);
-
       if (authData?.accessToken && authData?.refreshToken) {
-        const profile = getCustomerProfile(authData, {
-          fullName,
-          email,
-          phoneNumber,
-          age: Number(age),
-          gender,
-          createAvatar,
-        });
-
-        login(
-          profile,
-          {
-            accessToken: authData.accessToken,
-            refreshToken: authData.refreshToken,
-          },
-          "customer",
-        );
+        const profile = getCustomerProfile(authData, { fullName, email, phoneNumber, age: Number(age), gender, createAvatar });
+        login(profile, { accessToken: authData.accessToken, refreshToken: authData.refreshToken }, "customer");
         navigate(CUSTOMER_ROUTES.home, { replace: true });
         return;
       }
-
       if (isSuccessfulResponse(response)) {
-        navigate(CUSTOMER_ROUTES.login, {
-          replace: true,
-          state: { message: "تم إنشاء الحساب بنجاح. يمكنك تسجيل الدخول الآن." },
-        });
+        navigate(CUSTOMER_ROUTES.login, { replace: true, state: { message: "Account created! You can sign in now." } });
         return;
       }
-
-      setErrorMsg(response.message || "تعذر إكمال الملف الشخصي.");
+      setErrorMsg(response.message || "Could not complete profile.");
     } catch (error: unknown) {
-      setErrorMsg(
-        normalizeCustomerApiError(error, "حدث خطأ أثناء إكمال الملف الشخصي.").message,
-      );
+      setErrorMsg(normalizeCustomerApiError(error, "Profile setup failed. Please try again.").message);
     } finally {
       setIsLoading(false);
     }
   };
 
+  /* Shared input class */
+  const inputCls = "h-13 w-full rounded-xl border border-[#e8ddd5] bg-white px-4 text-[15px] text-[#2F2925] outline-none transition-colors placeholder:text-[#c0a898] focus:border-[#954c2a]";
+  const labelCls = "mb-1.5 block text-[14px] font-medium text-[#9c6b54]";
+
   return (
     <CustomerAuthLayout imageSrc={signupImg} imageAlt="Customer Signup">
-      <div className="flex h-full flex-col">
-        <div className="mb-5 text-center">
-          <h1
-            className="mb-1 text-[32px] font-bold text-[#A37E6B] md:text-[36px]"
-            style={{ fontFamily: '"PT Serif", serif' }}
-          >
-            Sign-up
-          </h1>
-          <p className="text-[18px] leading-[1.05] text-[#C9A390]">
-            Welcome to weAR
-            <br />
-            Create your account here!
-          </p>
-        </div>
 
-        {errorMsg && (
-          <div className="mb-4 rounded-[14px] border border-red-200 bg-red-50 px-4 py-3 text-center text-[14px] text-red-600">
-            {errorMsg}
-          </div>
-        )}
-        {message && (
-          <div className="mb-4 rounded-[14px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-[14px] text-emerald-700">
-            {message}
-          </div>
-        )}
+      {/* Header */}
+      <div className="mb-6 text-center">
+        <h1 className="mb-2 font-['Playfair_Display'] text-[32px] font-normal text-[#954c2a]">
+          Sign Up
+        </h1>
+        <p className="text-[15px] leading-snug text-[#9c6b54]">
+          Welcome to weAR — create your account
+        </p>
 
-        {step === 1 ? (
-          <form onSubmit={handleRegister} className="flex flex-col gap-3">
-            <div>
-              <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
-                Name
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Enter your Name"
-                className="h-[56px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your Email"
-                className="h-[56px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your Password"
-                  className="h-[56px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 pr-12 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-5 top-1/2 -translate-y-1/2 text-[#B6A092] transition-colors hover:text-[#5C5550]"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="Enter your Phone Number"
-                className="h-[56px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
-                required
-              />
-            </div>
-
-            <div className="mt-2 flex items-center justify-between">
-              <div className="flex gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#C9A390]" />
-                <span className="h-2.5 w-2.5 rounded-full bg-[#E4DCD1]" />
-              </div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="h-9 rounded-[10px] bg-[#C9A390] px-7 text-[18px] font-medium text-white transition-opacity hover:opacity-95 disabled:opacity-70"
-              >
-                {isLoading ? "Loading..." : "Next"}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleCompleteProfile} className="flex flex-col gap-4">
-            <div>
-              <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">
-                Age
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={age}
-                onChange={(e) => setAge(e.target.value)}
-                placeholder="Enter your Age"
-                className="h-[56px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none transition-colors placeholder:text-[#B6A092] focus:border-[#A37E6B]"
-                required
-              />
-            </div>
-
-            <fieldset>
-              <legend className="mb-3 text-[16px] font-medium text-[#C9A390]">
-                Gender
-              </legend>
-              <div className="flex gap-8 text-[16px] text-[#A37E6B]">
-                {(["Male", "Female"] as CustomerGender[]).map((option) => (
-                  <label key={option} className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="gender"
-                      value={option}
-                      checked={gender === option}
-                      onChange={() => setGender(option)}
-                      className="h-4 w-4 accent-[#C9A390]"
-                    />
-                    {option}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset>
-              <legend className="mb-3 text-[16px] font-medium text-[#C9A390]">
-                Do you want to create your own avatar now?
-              </legend>
-              <div className="flex gap-8 text-[16px] text-[#A37E6B]">
-                <label className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="createAvatar"
-                    checked={createAvatar === true}
-                    onChange={() => setCreateAvatar(true)}
-                    className="h-4 w-4 accent-[#C9A390]"
-                  />
-                  Yes
-                </label>
-                <label className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="createAvatar"
-                    checked={createAvatar === false}
-                    onChange={() => setCreateAvatar(false)}
-                    className="h-4 w-4 accent-[#C9A390]"
-                  />
-                  No
-                </label>
-              </div>
-            </fieldset>
-
-            <div className="mt-auto flex items-center justify-between pt-6">
-              <div className="flex gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#E4DCD1]" />
-                <span className="h-2.5 w-2.5 rounded-full bg-[#C9A390]" />
-              </div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="h-9 rounded-[10px] bg-[#C9A390] px-7 text-[18px] font-medium text-white transition-opacity hover:opacity-95 disabled:opacity-70"
-              >
-                {isLoading ? "Loading..." : "Submit"}
-              </button>
-            </div>
-          </form>
-        )}
-
-        <div className="mt-auto pt-4 text-center text-[16px] text-[#C9A390]">
-          Have an account?{" "}
-          <Link
-            to="/login/customer"
-            className="font-medium text-[#A37E6B] transition-all hover:underline"
-          >
-            Login ↗
-          </Link>
+        {/* Step indicator */}
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <span className={cn("flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-semibold", step === 1 ? "bg-[#9c6b54] text-white" : "bg-[#e8ddd5] text-[#9c6b54]")}>1</span>
+          <div className="h-px w-8 bg-[#e8ddd5]" />
+          <span className={cn("flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-semibold", step === 2 ? "bg-[#9c6b54] text-white" : "bg-[#e8ddd5] text-[#9c6b54]")}>2</span>
         </div>
       </div>
+
+      {/* Alerts */}
+      {errorMsg && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-[13px] text-red-600">
+          {errorMsg}
+        </div>
+      )}
+      {message && (
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-[13px] text-emerald-700">
+          {message}
+        </div>
+      )}
+
+      {/* ── Step 1: basic info ── */}
+      {step === 1 && (
+        <form onSubmit={handleRegister} className="flex flex-col gap-4">
+          <div>
+            <label className={labelCls}>Full Name</label>
+            <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter your name" className={inputCls} required />
+          </div>
+          <div>
+            <label className={labelCls}>Email</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" className={inputCls} required />
+          </div>
+          <div>
+            <label className={labelCls}>Password</label>
+            <div className="relative">
+              <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password" className={cn(inputCls, "pr-12")} required />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9c6b54] hover:text-[#954c2a]" aria-label={showPassword ? "Hide password" : "Show password"}>
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Phone Number</label>
+            <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Enter your phone number" className={inputCls} required />
+          </div>
+
+          <button type="submit" disabled={isLoading} className={cn("mt-2 h-13 w-full rounded-xl text-[16px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60", customerTheme.accentBg)}>
+            {isLoading ? "Please wait…" : "Next →"}
+          </button>
+
+          <div className="text-center text-[14px] text-[#9c6b54]">
+            Already have an account?{" "}
+            <Link to={CUSTOMER_ROUTES.login} className="font-semibold text-[#954c2a] hover:underline">Login ↗</Link>
+          </div>
+        </form>
+      )}
+
+      {/* ── Step 2: profile details ── */}
+      {step === 2 && (
+        <form onSubmit={handleCompleteProfile} className="flex flex-col gap-5">
+          <div>
+            <label className={labelCls}>Age</label>
+            <input type="number" min="1" max="120" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Your age" className={inputCls} required />
+          </div>
+
+          <fieldset>
+            <legend className={labelCls}>Gender</legend>
+            <div className="mt-2 flex gap-4">
+              {(["Male", "Female"] as CustomerGender[]).map((option) => (
+                <label key={option} className={cn("flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border py-3 text-[14px] font-medium transition-colors", gender === option ? "border-[#9c6b54] bg-[#9c6b54] text-white" : "border-[#e8ddd5] text-[#6F625B] hover:border-[#9c6b54]")}>
+                  <input type="radio" name="gender" value={option} checked={gender === option} onChange={() => setGender(option)} className="sr-only" />
+                  {option}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className={labelCls}>Create avatar now?</legend>
+            <div className="mt-2 flex gap-4">
+              {([["Yes", true], ["No, later", false]] as [string, boolean][]).map(([label, val]) => (
+                <label key={label} className={cn("flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border py-3 text-[14px] font-medium transition-colors", createAvatar === val ? "border-[#9c6b54] bg-[#9c6b54] text-white" : "border-[#e8ddd5] text-[#6F625B] hover:border-[#9c6b54]")}>
+                  <input type="radio" name="createAvatar" checked={createAvatar === val} onChange={() => setCreateAvatar(val)} className="sr-only" />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setStep(1)} className="flex h-13 flex-1 items-center justify-center rounded-xl border border-[#e8ddd5] text-[15px] font-medium text-[#9c6b54] hover:border-[#9c6b54] transition-colors">
+              ← Back
+            </button>
+            <button type="submit" disabled={isLoading} className={cn("flex h-13 flex-1 items-center justify-center rounded-xl text-[15px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60", customerTheme.accentBg)}>
+              {isLoading ? "Creating account…" : "Create Account"}
+            </button>
+          </div>
+        </form>
+      )}
     </CustomerAuthLayout>
   );
 }

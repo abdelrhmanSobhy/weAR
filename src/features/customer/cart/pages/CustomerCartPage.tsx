@@ -44,10 +44,10 @@ export function CustomerCartPage() {
     return (
       <div className="flex flex-col items-center justify-center gap-6 py-24 text-center">
         <div aria-live="polite" aria-atomic="true" className="sr-only">{liveMessage}</div>
-        <ShoppingBag className="h-16 w-16 text-[#A37E6B]" aria-hidden="true" />
+        <ShoppingBag className="h-16 w-16 text-[#9c6b54]" aria-hidden="true" />
         <h1 className="text-3xl font-bold text-[#2F2925]">Your cart is empty</h1>
         <p className="text-[#6F625B]">Browse our catalogue and add items you love.</p>
-        <Button asChild className={cn("rounded-full bg-[#A37E6B] text-white hover:bg-[#8F6E5D]", customerTheme.focusRing)}>
+        <Button asChild className={cn("rounded-full bg-[#9c6b54] text-white hover:bg-[#7d5643]", customerTheme.focusRing)}>
           <Link to={CUSTOMER_ROUTES.shop}>Continue Shopping</Link>
         </Button>
       </div>
@@ -59,7 +59,7 @@ export function CustomerCartPage() {
       <div aria-live="polite" aria-atomic="true" className="sr-only">{liveMessage}</div>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold text-[#2F2925]">
+        <h1 className="font-['Playfair_Display'] text-3xl font-normal text-[#2F2925]">
           Cart
           <span className="ml-2 text-lg font-normal text-[#6F625B]" aria-label={`${itemCount} ${itemCount === 1 ? "item" : "items"} in cart`}>({itemCount} {itemCount === 1 ? "item" : "items"})</span>
         </h1>
@@ -91,7 +91,7 @@ export function CustomerCartPage() {
                       className="h-24 w-20 rounded-2xl object-cover bg-[#F4EDE7]"
                     />
                   ) : (
-                    <div className="flex h-24 w-20 items-center justify-center rounded-2xl bg-[#F4EDE7] text-[#A37E6B]">
+                    <div className="flex h-24 w-20 items-center justify-center rounded-2xl bg-[#F4EDE7] text-[#9c6b54]">
                       <ImageIcon className="h-8 w-8" aria-hidden="true" />
                     </div>
                   )}
@@ -100,8 +100,8 @@ export function CustomerCartPage() {
                 <div className="flex flex-1 flex-col gap-2 min-w-0">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                      {item.brand && <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#A37E6B]">{item.brand}</p>}
-                      <Link to={item.productRoute} className={cn("font-semibold text-[#2F2925] hover:text-[#A37E6B]", customerTheme.focusRing)}>
+                      {item.brand && <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#9c6b54]">{item.brand}</p>}
+                      <Link to={item.productRoute} className={cn("font-semibold text-[#2F2925] hover:text-[#9c6b54]", customerTheme.focusRing)}>
                         {item.productName}
                       </Link>
                     </div>
@@ -121,7 +121,7 @@ export function CustomerCartPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-3 mt-auto">
-                    <div className="flex items-center gap-1 rounded-full border border-[#E4DCD1] bg-[#FAF7F4]">
+                    <div className="flex items-center gap-1 rounded-full border border-[#e8ddd5] bg-[#fef7f0]">
                       <button
                         type="button"
                         onClick={() => handleUpdateQty(item.productId, item.selectedSize, item.selectedColor, item.quantity - 1)}
@@ -131,7 +131,7 @@ export function CustomerCartPage() {
                       >
                         <Minus className="h-3 w-3" aria-hidden="true" />
                       </button>
-                      <span className="min-w-[2rem] text-center text-sm font-semibold" aria-label={`Quantity: ${item.quantity}`}>{item.quantity}</span>
+                      <span className="min-w-8 text-center text-sm font-semibold" aria-label={`Quantity: ${item.quantity}`}>{item.quantity}</span>
                       <button
                         type="button"
                         onClick={() => handleUpdateQty(item.productId, item.selectedSize, item.selectedColor, item.quantity + 1)}
@@ -153,7 +153,7 @@ export function CustomerCartPage() {
         </ul>
 
         <aside className={`${customerTheme.card} h-fit space-y-5 p-6`} aria-label="Cart summary">
-          <h2 className="text-xl font-bold text-[#2F2925]">Order summary</h2>
+          <h2 className="font-['Playfair_Display'] text-xl font-normal text-[#2F2925]">Order summary</h2>
 
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between">
@@ -162,7 +162,7 @@ export function CustomerCartPage() {
                 <PriceDisplay price={subtotal} discountedPrice={null} currency="USD" />
               </dd>
             </div>
-            <div className="flex justify-between border-t border-[#E4DCD1] pt-3">
+            <div className="flex justify-between border-t border-[#e8ddd5] pt-3">
               <dt className="font-bold text-[#2F2925]">Total</dt>
               <dd className="text-lg font-bold text-[#2F2925]">
                 <PriceDisplay price={subtotal} discountedPrice={null} currency="USD" />
@@ -172,7 +172,7 @@ export function CustomerCartPage() {
 
           <Button
             type="button"
-            className={cn("w-full rounded-full bg-[#A37E6B] text-white hover:bg-[#8F6E5D]", customerTheme.focusRing)}
+            className={cn("w-full rounded-full bg-[#9c6b54] text-white hover:bg-[#7d5643]", customerTheme.focusRing)}
             onClick={() => navigate(CUSTOMER_ROUTES.checkout)}
           >
             Proceed to Checkout

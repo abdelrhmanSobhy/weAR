@@ -72,18 +72,34 @@ function getTokenFromLocalStorage(): string | null {
   }
 }
 
+const AUTH_SKIP_PATHS = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/complete-profile",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+  "/auth/refresh",
+  "/auth/refresh-token",
+  "/auth/logout",
+];
+
 apiClient.interceptors.request.use(
   (config) => {
-    let token = useAuthStore.getState().accessToken;
+    const url = String(config.url || "");
+    const isAuthPath = AUTH_SKIP_PATHS.some((path) => url.includes(path));
 
-    if (!token && typeof window !== "undefined") {
-      token = getTokenFromLocalStorage();
-    }
+    if (!isAuthPath) {
+      let token = useAuthStore.getState().accessToken;
 
-    if (token) {
-      config.headers = config.headers || {};
-      (config.headers as Record<string, string>)["Authorization"] =
-        `Bearer ${token}`;
+      if (!token && typeof window !== "undefined") {
+        token = getTokenFromLocalStorage();
+      }
+
+      if (token) {
+        config.headers = config.headers || {};
+        (config.headers as Record<string, string>)["Authorization"] =
+          `Bearer ${token}`;
+      }
     }
 
     return config;

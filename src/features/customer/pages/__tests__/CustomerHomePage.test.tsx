@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CustomerHomePage } from "@/features/customer/pages/CustomerHomePage";
 import { useCustomerCategories, useCustomerOffers, useCustomerProducts } from "@/features/customer/queries/catalog.queries";
@@ -23,12 +24,12 @@ beforeEach(() => {
 
 describe("CustomerHomePage", () => {
   it("renders the storefront home hierarchy and product sections", () => {
-    render(<MemoryRouter><CustomerHomePage /></MemoryRouter>);
-    expect(screen.getByRole("heading", { name: /Discover fashion/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Product categories/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/Virtual try-on/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: /Best Seller/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /New Arrival/i })).toBeInTheDocument();
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={qc}><MemoryRouter><CustomerHomePage /></MemoryRouter></QueryClientProvider>);
+    expect(screen.getByRole("heading", { name: /Shop Collections/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/Try before you buy/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: /Best Sellers/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /New Arrivals/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /All Products/i })).toBeInTheDocument();
     expect(screen.getAllByText("Linen Dress").length).toBeGreaterThan(0);
   });

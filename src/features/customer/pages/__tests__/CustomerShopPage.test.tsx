@@ -9,6 +9,9 @@ vi.mock("@/features/customer/queries/catalog.queries", () => ({
   useCustomerCategories: vi.fn(),
   useCustomerProducts: vi.fn(),
 }));
+vi.mock("@/features/customer/queries/favorites.queries", () => ({
+  useToggleCustomerFavorite: () => ({ mutate: vi.fn(), isPending: false }),
+}));
 
 const mockedProducts = vi.mocked(useCustomerProducts);
 const mockedCategories = vi.mocked(useCustomerCategories);
@@ -32,14 +35,14 @@ describe("CustomerShopPage", () => {
 
   it("clears filters while preserving shop rendering", async () => {
     renderShop("/customer/shop?category=c1&colors=Black");
-    fireEvent.click(screen.getAllByRole("button", { name: /Clear filters/i })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /Clear all/i })[0]);
     await waitFor(() => expect(mockedProducts).toHaveBeenLastCalledWith(expect.not.objectContaining({ categoryId: "c1" })));
   });
 
   it("shows loading, empty, and error states", () => {
     mockedProducts.mockReturnValueOnce({ isLoading: true, isError: false, data: undefined, refetch: vi.fn() } as never);
     const { rerender } = renderShop();
-    expect(screen.getByText(/Loading results/i)).toBeInTheDocument();
+    expect(document.querySelector(".animate-pulse")).toBeInTheDocument();
     mockedProducts.mockReturnValueOnce({ isLoading: false, isError: false, data: { items: [], totalCount: 0, totalPages: 1, pageSize: 12 }, refetch: vi.fn() } as never);
     rerender(<MemoryRouter initialEntries={["/customer/shop"]}><Routes><Route path="/customer/shop" element={<CustomerShopPage />} /></Routes></MemoryRouter>);
     expect(screen.getByText(/No products yet/i)).toBeInTheDocument();

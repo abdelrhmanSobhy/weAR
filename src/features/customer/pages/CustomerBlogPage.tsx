@@ -28,7 +28,7 @@ function PostDetail({
       <Button
         variant="ghost"
         className={cn(
-          "mb-6 rounded-full text-[#A37E6B] hover:bg-[#F4EDE7]",
+          "mb-6 rounded-full text-[#9c6b54] hover:bg-[#fef7f0]",
           customerTheme.focusRing,
         )}
         onClick={onBack}
@@ -40,11 +40,11 @@ function PostDetail({
       <div className={cn(customerTheme.card, "overflow-hidden")}>
         {/* Cover placeholder */}
         <div
-          className="flex h-48 items-center justify-center bg-[#F4EDE7] sm:h-64"
+          className="flex h-48 items-center justify-center bg-[#fef7f0] sm:h-64"
           role="img"
           aria-label={post.coverAlt}
         >
-          <span className="text-4xl text-[#A37E6B]" aria-hidden="true">
+          <span className="text-4xl text-[#9c6b54]" aria-hidden="true">
             ✦
           </span>
         </div>
@@ -53,7 +53,7 @@ function PostDetail({
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <span
               className={cn(
-                "inline-flex items-center gap-1 rounded-full bg-[#F4EDE7] px-3 py-1 text-xs font-semibold",
+                "inline-flex items-center gap-1 rounded-full bg-[#fef7f0] px-3 py-1 text-xs font-semibold",
                 customerTheme.primaryText,
               )}
             >
@@ -73,7 +73,7 @@ function PostDetail({
 
           <h1
             id="post-title"
-            className="mb-3 text-2xl font-bold text-[#2F2925] sm:text-3xl"
+            className="mb-3 font-['Playfair_Display'] text-2xl font-normal text-[#2F2925] sm:text-3xl"
           >
             {post.title}
           </h1>
@@ -112,19 +112,19 @@ function PostCard({
     >
       {/* Cover placeholder */}
       <div
-        className="flex h-36 items-center justify-center bg-[#F4EDE7]"
+        className="flex h-36 items-center justify-center bg-[#fef7f0]"
         role="img"
         aria-label={post.coverAlt}
         aria-hidden="true"
       >
-        <span className="text-3xl text-[#A37E6B]">✦</span>
+        <span className="text-3xl text-[#9c6b54]">✦</span>
       </div>
 
       <div className="flex flex-1 flex-col p-5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span
             className={cn(
-              "inline-flex items-center gap-1 rounded-full bg-[#F4EDE7] px-2.5 py-0.5 text-xs font-semibold",
+              "inline-flex items-center gap-1 rounded-full bg-[#fef7f0] px-2.5 py-0.5 text-xs font-semibold",
               customerTheme.primaryText,
             )}
           >
@@ -155,7 +155,7 @@ function PostCard({
             variant="ghost"
             size="sm"
             className={cn(
-              "rounded-full text-[#A37E6B] hover:bg-[#F4EDE7]",
+              "rounded-full text-[#9c6b54] hover:bg-[#fef7f0]",
               customerTheme.focusRing,
             )}
             onClick={() => onSelect(post)}
@@ -208,8 +208,8 @@ export function CustomerBlogPage() {
                 "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
                 customerTheme.focusRing,
                 activeCategory === null
-                  ? "border-[#A37E6B] bg-[#A37E6B] text-white"
-                  : "border-[#E4DCD1] text-[#6F625B] hover:border-[#A37E6B] hover:text-[#A37E6B]",
+                  ? "border-[#A37E6B] bg-[#9c6b54] text-white"
+                  : "border-[#e8ddd5] text-[#6F625B] hover:border-[#A37E6B] hover:text-[#9c6b54]",
               )}
               onClick={() => setActiveCategory(null)}
               aria-pressed={activeCategory === null}
@@ -225,8 +225,8 @@ export function CustomerBlogPage() {
                   "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
                   customerTheme.focusRing,
                   activeCategory === cat
-                    ? "border-[#A37E6B] bg-[#A37E6B] text-white"
-                    : "border-[#E4DCD1] text-[#6F625B] hover:border-[#A37E6B] hover:text-[#A37E6B]",
+                    ? "border-[#A37E6B] bg-[#9c6b54] text-white"
+                    : "border-[#e8ddd5] text-[#6F625B] hover:border-[#A37E6B] hover:text-[#9c6b54]",
                 )}
                 onClick={() =>
                   setActiveCategory(activeCategory === cat ? null : cat)
