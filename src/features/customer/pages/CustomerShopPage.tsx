@@ -149,10 +149,11 @@ export function CustomerShopPage() {
 
       {/* Category */}
       <div className="space-y-2">
-        <p className="text-[13px] font-semibold uppercase tracking-wide text-[#6F625B]">
+        <label htmlFor="shop-category-select" className="text-[13px] font-semibold uppercase tracking-wide text-[#6F625B]">
           Category
-        </p>
+        </label>
         <select
+          id="shop-category-select"
           className="h-10 w-full rounded-xl border border-[#e8ddd5] bg-white px-3 text-[14px] text-[#2F2925] outline-none focus:border-[#954c2a]"
           value={queryState.categoryId}
           onChange={(e) => updateQuery({ categoryId: e.target.value })}
