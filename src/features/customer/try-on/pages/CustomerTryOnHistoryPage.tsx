@@ -1,11 +1,14 @@
 import { Link } from "react-router-dom";
-import { AlertCircle, Clock3, RotateCcw, Shirt, Sparkles } from "lucide-react";
+import { AlertCircle, Box, Clock3, RotateCcw, Shirt, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CUSTOMER_ROUTES } from "@/features/customer/routes/customerRoutes";
 import { customerTheme } from "@/features/customer/styles/customerTheme";
 import { useCustomerTryOnSessions } from "@/features/customer/try-on/hooks/tryOn.queries";
 import type { TryOnSession } from "@/features/customer/try-on/types/tryOn";
+import { toSafeModelUrl } from "@/features/customer/try-on/utils/modelUrl";
 import { cn } from "@/lib/utils";
+
+const isModelUrl = (url: string) => /\.(glb|gltf|usdz)(\?.*)?$/i.test(url);
 
 const processingStatuses = new Set(["processing", "pending", "queued", "running", "in_progress", "created"]);
 const failedStatuses = new Set(["failed", "error", "cancelled", "canceled", "rejected"]);
@@ -30,7 +33,7 @@ const formatDate = (value?: string | null) => {
 };
 
 const statusStyles: Record<SessionState, { label: string; className: string; icon: typeof Clock3 }> = {
-  processing: { label: "Processing", className: "bg-[#F4EDE7] text-[#6F625B]", icon: Clock3 },
+  processing: { label: "Processing", className: "bg-[#fef7f0] text-[#6F625B]", icon: Clock3 },
   completed: { label: "Completed", className: "bg-emerald-50 text-emerald-700", icon: Sparkles },
   failed: { label: "Failed", className: "bg-red-50 text-red-700", icon: AlertCircle },
 };
@@ -41,17 +44,23 @@ function SessionCard({ session }: { session: TryOnSession }) {
   const state = getSessionState(session);
   const style = statusStyles[state];
   const StatusIcon = style.icon;
-  const imageUrl = session.resultImageUrl ?? session.product?.primaryImageUrl ?? session.product?.imageUrls?.[0] ?? null;
+  const safeResultUrl = toSafeModelUrl(session.resultImageUrl);
+  const resultIsModel = safeResultUrl ? isModelUrl(safeResultUrl) : false;
+  const imageUrl = (!resultIsModel ? session.resultImageUrl : null) ?? session.product?.primaryImageUrl ?? session.product?.imageUrls?.[0] ?? null;
 
   return (
     <article className={`${customerTheme.card} grid gap-4 p-5 sm:grid-cols-[140px_minmax(0,1fr)]`}>
-      <div className="flex h-40 items-center justify-center overflow-hidden rounded-3xl bg-[#F4EDE7]">
-        {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full object-cover" /> : <Shirt className="h-12 w-12 text-[#A37E6B]" aria-hidden="true" />}
+      <div className="flex h-40 items-center justify-center overflow-hidden rounded-3xl bg-[#fef7f0]">
+        {resultIsModel
+          ? <Box className="h-12 w-12 text-[#9c6b54]" aria-hidden="true" />
+          : imageUrl
+            ? <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            : <Shirt className="h-12 w-12 text-[#9c6b54]" aria-hidden="true" />}
       </div>
       <div className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">{session.sessionType}</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">{session.sessionType}</p>
             <h2 className="text-xl font-semibold text-[#2F2925]">{getProductName(session)}</h2>
             <p className="text-sm text-[#6F625B]">Started {formatDate(session.createdAt)}</p>
           </div>
@@ -80,7 +89,7 @@ export function CustomerTryOnHistoryPage() {
     <section className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#A37E6B]">Try-on history</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#9c6b54]">Try-on history</p>
           <h1 className="mt-2 text-3xl font-semibold text-[#2F2925]">Your fitting room sessions</h1>
           <p className="mt-2 max-w-2xl text-[#6F625B]">Review processing, completed, and failed try-ons from your authenticated customer account.</p>
         </div>
@@ -89,7 +98,7 @@ export function CustomerTryOnHistoryPage() {
 
       {sessions.isLoading && <div className={`${customerTheme.softCard} p-8 text-center`} role="status">Loading try-on history…</div>}
       {sessions.isError && <div className={`${customerTheme.softCard} p-8`} role="alert"><h2 className="font-semibold">Try-on history unavailable</h2><p className="mt-1 text-sm text-[#6F625B]">We could not load your sessions. Please try again.</p></div>}
-      {!sessions.isLoading && !sessions.isError && sortedSessions.length === 0 && <div className={`${customerTheme.card} p-10 text-center`}><Shirt className="mx-auto h-12 w-12 text-[#A37E6B]" aria-hidden="true" /><h2 className="mt-4 text-xl font-semibold">No try-ons yet</h2><p className="mt-2 text-[#6F625B]">Choose a product to create your first virtual fitting.</p><Button asChild className="mt-5 rounded-full"><Link to={CUSTOMER_ROUTES.shop}>Browse products</Link></Button></div>}
+      {!sessions.isLoading && !sessions.isError && sortedSessions.length === 0 && <div className={`${customerTheme.card} p-10 text-center`}><Shirt className="mx-auto h-12 w-12 text-[#9c6b54]" aria-hidden="true" /><h2 className="mt-4 text-xl font-semibold">No try-ons yet</h2><p className="mt-2 text-[#6F625B]">Choose a product to create your first virtual fitting.</p><Button asChild className="mt-5 rounded-full"><Link to={CUSTOMER_ROUTES.shop}>Browse products</Link></Button></div>}
       {sortedSessions.length > 0 && <div className="space-y-4">{sortedSessions.map((session) => <SessionCard key={session.id} session={session} />)}</div>}
     </section>
   );

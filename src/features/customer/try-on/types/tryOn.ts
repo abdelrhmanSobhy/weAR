@@ -8,6 +8,8 @@ export const TRY_ON_SESSION_TYPES = {
 
 export type TryOnSessionType = (typeof TRY_ON_SESSION_TYPES)[keyof typeof TRY_ON_SESSION_TYPES] | string;
 
+export type TryOnResultType = "Image2D" | "Model3D" | string;
+
 export interface CreateTryOnSessionPayload {
   productId: string;
   sessionType: (typeof TRY_ON_SESSION_TYPES)[keyof typeof TRY_ON_SESSION_TYPES];
@@ -22,10 +24,13 @@ export interface TryOnSession {
   avatarId?: string | null;
   sessionType: TryOnSessionType;
   status?: string | null;
+  resultType?: TryOnResultType | null;
   resultImageUrl?: string | null;
+  resultModelUrl?: string | null;
   avatar3dModelUrl?: string | null;
   result3dModelUrl?: string | null;
   model3dUrl?: string | null;
+  traceId?: string | null;
   sizeRecommendation?: string | null;
   recommendedSize?: string | null;
   confidenceScore?: number | null;

@@ -12,11 +12,14 @@ type TryOnSessionResponse = Partial<TryOnSession> & {
 
 type TryOnResultResponse = {
   status?: string | null;
+  resultType?: string | null;
   resultImageUrl?: string | null;
+  resultModelUrl?: string | null;
   recommendedSize?: string | null;
   sizeRecommendation?: string | null;
   confidenceScore?: number | null;
   durationSeconds?: number | null;
+  traceId?: string | null;
 };
 
 type TryOnSessionsPage = Partial<PaginatedCustomerResponse<TryOnSessionResponse>>;
@@ -49,8 +52,11 @@ const normalizeCreatedTryOn = (
   avatarId: payload.avatarId ?? null,
   sessionType: payload.sessionType,
   status: result.status ?? null,
+  resultType: result.resultType ?? null,
   resultImageUrl: result.resultImageUrl ?? null,
+  resultModelUrl: result.resultModelUrl ?? null,
   recommendedSize: result.recommendedSize ?? result.sizeRecommendation ?? null,
+  traceId: result.traceId ?? null,
   confidenceScore: result.confidenceScore ?? null,
   durationSeconds: result.durationSeconds ?? null,
   createdAt: new Date().toISOString(),
