@@ -93,46 +93,14 @@ type AvatarHistoryItem = {
 
 type AvatarHistoryResponse = Partial<PaginatedCustomerResponse<AvatarHistoryItem>>;
 
-type BackendAvatarMeasurementPayload = {
-  avatarId?: string;
-  heightCm: number;
-  weightKg: number;
-  chestCm: number | null;
-  waistCm: number | null;
-  hipsCm: number | null;
-  shoulderWidthCm: number | null;
-  inseamCm: number | null;
-  neckCm: null;
-  armLengthCm: null;
-  shoeSizeEu: null;
-  bodyShape: null;
-  source: "Manual";
-};
-
-const toBackendAvatarMeasurements = (
+const toManualPayload = (
   measurements: BodyMeasurements,
   avatarId?: string,
-): BackendAvatarMeasurementPayload => {
-  if (!measurements.heightCm || !measurements.weightKg) {
-    throw new Error("Height and weight are required by the avatar backend.");
-  }
-
-  return {
-    avatarId,
-    heightCm: measurements.heightCm,
-    weightKg: measurements.weightKg,
-    chestCm: measurements.chestCm ?? null,
-    waistCm: measurements.waistCm ?? null,
-    hipsCm: measurements.hipsCm ?? null,
-    shoulderWidthCm: measurements.shoulderCm ?? null,
-    inseamCm: measurements.inseamCm ?? null,
-    neckCm: null,
-    armLengthCm: null,
-    shoeSizeEu: null,
-    bodyShape: null,
-    source: "Manual",
-  };
-};
+): Record<string, unknown> => ({
+  ...(avatarId !== undefined ? { avatarId } : {}),
+  ...measurements,
+  source: "manual",
+});
 
 const mapFlatAvatarToCustomerAvatar = (
   avatar: FlatAvatarResponse,
@@ -225,7 +193,7 @@ export const avatarApi = {
   createAvatar: async (customerId: string, measurements: BodyMeasurements): Promise<string> => {
     const response = await apiClient.post(
       `/api/customers/${customerId}/avatar`,
-      toBackendAvatarMeasurements(measurements),
+      toManualPayload(measurements),
     );
     return unwrapCustomerApiData<string>(response.data);
   },
@@ -287,7 +255,7 @@ export const avatarApi = {
   updateMeasurements: async (customerId: string, avatarId: string, measurements: BodyMeasurements): Promise<void> => {
     await apiClient.patch(
       `/api/customers/${customerId}/avatar/measurements`,
-      toBackendAvatarMeasurements(measurements, avatarId),
+      toManualPayload(measurements, avatarId),
     );
   },
   getSizeRecommendation: async (customerId: string, productId: string, signal?: AbortSignal) => {
