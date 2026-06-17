@@ -51,7 +51,7 @@ export function CustomerResetPasswordPage() {
             onClick={() => navigate(CUSTOMER_ROUTES.login, { replace: true, state: { message: "Password reset. Please log in." } })}
             className="h-13 w-full rounded-xl bg-[#9c6b54] text-[16px] font-medium text-white transition-opacity hover:opacity-90"
           >
-            Go to login
+            Go to customer login
           </button>
         </div>
       </CustomerAuthLayout>

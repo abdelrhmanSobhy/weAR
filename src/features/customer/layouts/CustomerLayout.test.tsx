@@ -55,7 +55,7 @@ describe("CustomerLayout", () => {
     renderLayout();
 
     const desktopNav = screen.getByRole("navigation", {
-      name: "Customer navigation",
+      name: "Main navigation",
     });
 
     expect(within(desktopNav).getByRole("link", { name: /Home/i })).toHaveAttribute(
@@ -66,47 +66,47 @@ describe("CustomerLayout", () => {
       "href",
       CUSTOMER_ROUTES.shop,
     );
-    expect(within(desktopNav).getByRole("link", { name: /Try On/i })).toHaveAttribute(
+    expect(within(desktopNav).getByRole("link", { name: /Try On AR/i })).toHaveAttribute(
       "href",
       CUSTOMER_ROUTES.tryOn,
     );
-    expect(within(desktopNav).getByRole("link", { name: /Favorites/i })).toHaveAttribute(
+    expect(within(desktopNav).getByRole("link", { name: /About/i })).toHaveAttribute(
       "href",
-      CUSTOMER_ROUTES.favorites,
+      CUSTOMER_ROUTES.about,
     );
-    expect(within(desktopNav).getByRole("link", { name: /Account/i })).toHaveAttribute(
+    expect(within(desktopNav).getByRole("link", { name: /Blog/i })).toHaveAttribute(
       "href",
-      CUSTOMER_ROUTES.account,
+      CUSTOMER_ROUTES.blog,
     );
   });
 
   it("opens, closes, and route-select closes the mobile menu", () => {
     renderLayout();
 
-    const menuButton = screen.getByRole("button", { name: "Open customer menu" });
+    const menuButton = screen.getByRole("button", { name: "Open menu" });
     fireEvent.click(menuButton);
 
     const mobileNav = screen.getByRole("navigation", {
-      name: "Mobile customer navigation",
+      name: "Mobile navigation",
     });
     expect(mobileNav).toBeInTheDocument();
 
     fireEvent.click(within(mobileNav).getByRole("link", { name: /Shop/i }));
-    expect(screen.queryByRole("navigation", { name: "Mobile customer navigation" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Mobile navigation" })).not.toBeInTheDocument();
     expect(screen.getByRole("main")).toHaveTextContent("Nested shop placeholder");
 
-    fireEvent.click(screen.getByRole("button", { name: "Open customer menu" }));
-    expect(screen.getByRole("navigation", { name: "Mobile customer navigation" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(screen.getByRole("navigation", { name: "Mobile navigation" })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(screen.queryByRole("navigation", { name: "Mobile customer navigation" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Mobile navigation" })).not.toBeInTheDocument();
   });
 
   it("logs out from the mobile account action", async () => {
     renderLayout();
 
-    fireEvent.click(screen.getByRole("button", { name: "Open customer menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
     const mobileNav = screen.getByRole("navigation", {
-      name: "Mobile customer navigation",
+      name: "Mobile navigation",
     });
     fireEvent.click(within(mobileNav).getByRole("button", { name: "Sign out" }));
 

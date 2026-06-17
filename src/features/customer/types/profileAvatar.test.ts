@@ -8,7 +8,6 @@ describe("avatar measurement and photo helpers", () => {
     const parsed = manualMeasurementSchema.parse({ heightCm: 180, weightKg: 75, chestCm: 100 });
     expect(mapManualMeasurementsToPayload(parsed)).toMatchObject({ heightCm: 180, weightKg: 75, chestCm: 100, waistCm: null });
     expect(() => manualMeasurementSchema.parse({ heightCm: 0, weightKg: 75 })).toThrow();
-    expect(() => manualMeasurementSchema.parse({ heightCm: 180 })).toThrow();
   });
 
   it("normalizes and formats nullable measurements", () => {

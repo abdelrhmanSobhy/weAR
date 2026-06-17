@@ -41,6 +41,7 @@ function PasswordInput({
         type={visible ? "text" : "password"}
         name={name}
         placeholder={placeholder}
+        aria-label={placeholder}
         required
         className={cn(inputCls, "pr-12")}
       />
@@ -231,6 +232,7 @@ export function CustomerAccountPage() {
                   name="deletePassword"
                   required
                   placeholder="Password"
+                  aria-label="Delete account password"
                   className={cn(inputCls, "pr-12")}
                 />
                 <button

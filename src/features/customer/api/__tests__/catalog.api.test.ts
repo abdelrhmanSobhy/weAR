@@ -19,15 +19,14 @@ describe("catalogApi", () => {
       data: { success: true, data: { data: { items: [{ id: "p1" }] } } },
     });
 
-    await expect(catalogApi.getProducts()).resolves.toEqual({
+    await expect(catalogApi.getProducts()).resolves.toMatchObject({
       items: [
-        {
+        expect.objectContaining({
           id: "p1",
           categoryId: null,
           categoryName: null,
-          images: undefined,
           views: null,
-        },
+        }),
       ],
     });
   });

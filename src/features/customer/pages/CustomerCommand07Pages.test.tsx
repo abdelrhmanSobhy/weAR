@@ -79,7 +79,7 @@ describe("Command 07 customer pages", () => {
     expect(screen.getByText("No avatar yet")).toBeInTheDocument();
     hooks.useCustomerAvatar.mockReturnValue({ isLoading: false, isError: false, data: { id: "av1", customerId: "c1", avatar3dModelUrl: null, measurements: { heightCm: 170, chestCm: null } } });
     renderPage(<CustomerAvatarPage />, "/customer/avatar");
-    expect(screen.getByText(/3D model is not available yet/)).toBeInTheDocument();
+    expect(screen.getByText(/3D model is not yet available/)).toBeInTheDocument();
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 

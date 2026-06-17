@@ -154,7 +154,7 @@ export function AddressCard({
           onClick={onEdit}
           className="rounded-lg border border-[#e8ddd5] px-4 py-1.5 text-sm font-medium text-[#2F2925] transition-colors hover:bg-[#fef7f0]"
         >
-          Edit
+          Edit address
         </button>
         <button
           type="button"
@@ -162,7 +162,7 @@ export function AddressCard({
           disabled={address.isDefault || busy}
           className="rounded-lg border border-[#e8ddd5] px-4 py-1.5 text-sm font-medium text-[#2F2925] transition-colors hover:bg-[#fef7f0] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Set default
+          Set as default
         </button>
         <button
           type="button"
