@@ -34,28 +34,65 @@ export function CustomerForgotPasswordPage() {
   return (
     <CustomerAuthLayout imageSrc={loginImg} imageAlt="Customer forgot password">
       <div className="mb-7 text-center">
-        <h1 className="mb-1 text-[32px] font-bold text-[#A37E6B] md:text-[36px]" style={{ fontFamily: '"PT Serif", serif' }}>Forgot Password</h1>
-        <p className="text-[16px] leading-[1.35] text-[#C9A390]">Enter your customer email and we&apos;ll send a one-time password.</p>
+        <h1 className="mb-2 font-['Playfair_Display'] text-[32px] font-normal text-[#954c2a]">
+          Forgot Password
+        </h1>
+        <p className="text-[15px] leading-snug text-[#9c6b54]">
+          Enter your email and we&apos;ll send a one-time password.
+        </p>
       </div>
 
       {submittedEmail ? (
         <div className="flex flex-col gap-4 text-center">
-          <div className="rounded-[14px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-[14px] text-emerald-700">
-            If this customer account exists, an OTP was sent to <strong>{submittedEmail}</strong>.
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-700">
+            If this account exists, an OTP was sent to <strong>{submittedEmail}</strong>.
           </div>
-          <button type="button" onClick={() => navigate(CUSTOMER_ROUTES.resetPassword, { state: { email: submittedEmail } })} className="h-[58px] rounded-[14px] bg-[#C9A390] text-[18px] font-medium text-white shadow-md shadow-[#C9A390]/20 transition-opacity hover:opacity-95">Enter OTP</button>
-          <Link to={CUSTOMER_ROUTES.login} className="text-[14px] font-medium text-[#A37E6B] hover:underline">Back to customer login</Link>
+          <button
+            type="button"
+            onClick={() => navigate(CUSTOMER_ROUTES.resetPassword, { state: { email: submittedEmail } })}
+            className="h-13 w-full rounded-xl bg-[#9c6b54] text-[16px] font-medium text-white transition-opacity hover:opacity-90"
+          >
+            Enter OTP
+          </button>
+          <Link
+            to={CUSTOMER_ROUTES.login}
+            className="text-[14px] font-medium text-[#954c2a] hover:underline"
+          >
+            Back to login
+          </Link>
         </div>
       ) : (
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          {apiError && <div className="rounded-[14px] border border-red-200 bg-red-50 px-4 py-3 text-center text-[14px] text-red-600">{apiError}</div>}
+          {apiError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-[13px] text-red-600">
+              {apiError}
+            </div>
+          )}
           <div>
-            <label className="mb-1.5 block text-[16px] font-medium text-[#C9A390]">Email</label>
-            <input type="email" placeholder="Enter your Email" {...form.register("email")} className="h-[58px] w-full rounded-[14px] border border-[#C9A390] bg-white px-5 text-[16px] text-[#5C5550] outline-none placeholder:text-[#B6A092] focus:border-[#A37E6B]" />
-            {form.formState.errors.email && <p className="mt-1 text-[12px] text-red-500">{form.formState.errors.email.message}</p>}
+            <label className="mb-1.5 block text-[14px] font-medium text-[#9c6b54]">Email</label>
+            <input
+              type="email"
+              placeholder="Enter your Email"
+              {...form.register("email")}
+              className="h-13 w-full rounded-xl border border-[#e8ddd5] bg-white px-4 text-[15px] text-[#2F2925] outline-none placeholder:text-[#c0a898] focus:border-[#954c2a]"
+            />
+            {form.formState.errors.email && (
+              <p className="mt-1 text-[12px] text-red-500">{form.formState.errors.email.message}</p>
+            )}
           </div>
-          <button type="submit" disabled={form.formState.isSubmitting} className="h-[58px] rounded-[14px] bg-[#C9A390] text-[18px] font-medium text-white shadow-md shadow-[#C9A390]/20 transition-opacity hover:opacity-95 disabled:opacity-70">{form.formState.isSubmitting ? "Sending..." : "Send OTP"}</button>
-          <Link to={CUSTOMER_ROUTES.login} className="text-center text-[14px] font-medium text-[#A37E6B] hover:underline">Back to customer login</Link>
+          <button
+            type="submit"
+            disabled={form.formState.isSubmitting}
+            className="h-13 w-full rounded-xl bg-[#9c6b54] text-[16px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+          >
+            {form.formState.isSubmitting ? "Sending..." : "Send OTP"}
+          </button>
+          <Link
+            to={CUSTOMER_ROUTES.login}
+            className="text-center text-[14px] font-medium text-[#954c2a] hover:underline"
+          >
+            Back to login
+          </Link>
         </form>
       )}
     </CustomerAuthLayout>
