@@ -98,6 +98,9 @@ export interface CustomerAvatar {
   customerId: string;
   measurements: BodyMeasurements;
   avatar3dModelUrl: string | null;
+  avatarFrontImageUrl?: string | null;
+  avatarSideImageUrl?: string | null;
+  avatar2dImageUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

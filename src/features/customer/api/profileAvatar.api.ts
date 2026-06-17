@@ -66,6 +66,9 @@ type FlatAvatarResponse = {
   shoeSizeEu?: number | null;
   bodyShape?: string | null;
   avatar3dModelUrl?: string | null;
+  avatarFrontImageUrl?: string | null;
+  avatarSideImageUrl?: string | null;
+  avatar2dImageUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
   lastMeasuredAt?: string;
@@ -159,6 +162,9 @@ const mapFlatAvatarToCustomerAvatar = (
     },
   ),
   avatar3dModelUrl: avatar.avatar3dModelUrl ?? null,
+  avatarFrontImageUrl: avatar.avatarFrontImageUrl ?? null,
+  avatarSideImageUrl: avatar.avatarSideImageUrl ?? null,
+  avatar2dImageUrl: avatar.avatar2dImageUrl ?? null,
   createdAt: avatar.createdAt,
   updatedAt: avatar.updatedAt ?? avatar.lastMeasuredAt,
 });
