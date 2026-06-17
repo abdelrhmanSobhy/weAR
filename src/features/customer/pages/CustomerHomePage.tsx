@@ -11,6 +11,7 @@ import {
   useCustomerOffers,
   useCustomerProducts,
 } from "@/features/customer/queries/catalog.queries";
+import { useToggleCustomerFavorite } from "@/features/customer/queries/favorites.queries";
 import { customerTheme } from "@/features/customer/styles/customerTheme";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +70,7 @@ export function CustomerHomePage() {
     sortDirection: "desc",
   });
   const allProductsQuery = useCustomerProducts({ pageNumber: 1, pageSize: 8 });
+  const toggleFavorite = useToggleCustomerFavorite();
 
   const categories = Array.isArray(categoriesQuery.data)
     ? categoriesQuery.data
@@ -259,6 +261,7 @@ export function CustomerHomePage() {
             title=""
             products={bestSellersQuery.data?.items}
             isLoading={bestSellersQuery.isLoading}
+            onToggleFavorite={(id) => toggleFavorite.mutate(id)}
           />
         )}
       </section>
@@ -291,6 +294,7 @@ export function CustomerHomePage() {
             title=""
             products={newArrivalsQuery.data?.items}
             isLoading={newArrivalsQuery.isLoading}
+            onToggleFavorite={(id) => toggleFavorite.mutate(id)}
           />
         )}
       </section>
@@ -317,6 +321,7 @@ export function CustomerHomePage() {
           <ProductGrid
             products={allProductsQuery.data?.items}
             isLoading={allProductsQuery.isLoading}
+            onToggleFavorite={(id) => toggleFavorite.mutate(id)}
           />
         )}
       </section>

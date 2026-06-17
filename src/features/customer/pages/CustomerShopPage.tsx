@@ -10,6 +10,7 @@ import {
   useCustomerCategories,
   useCustomerProducts,
 } from "@/features/customer/queries/catalog.queries";
+import { useToggleCustomerFavorite } from "@/features/customer/queries/favorites.queries";
 import { useCompareStore, COMPARE_MAX, COMPARE_MIN } from "@/features/customer/compare/useCompareStore";
 import { CUSTOMER_ROUTES } from "@/features/customer/routes/customerRoutes";
 import { customerTheme } from "@/features/customer/styles/customerTheme";
@@ -48,6 +49,7 @@ export function CustomerShopPage() {
   const removeFromCompare = useCompareStore((s) => s.remove);
   const clearCompare = useCompareStore((s) => s.clear);
   const isFull = compareIds.length >= COMPARE_MAX;
+  const toggleFavorite = useToggleCustomerFavorite();
 
   const handleToggleCompare = (productId: string) => {
     if (compareIds.includes(productId)) {
@@ -369,6 +371,7 @@ export function CustomerShopPage() {
             <ProductGrid
               products={products}
               isLoading={productsQuery.isLoading}
+              onToggleFavorite={(id) => toggleFavorite.mutate(id)}
               onToggleCompare={handleToggleCompare}
               compareSelectedIds={compareIds}
               isCompareFull={isFull}
