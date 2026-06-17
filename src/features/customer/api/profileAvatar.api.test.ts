@@ -196,7 +196,7 @@ describe("profile, addresses and avatar API adapters", () => {
     expect(mockedApiClient.post).toHaveBeenCalledWith(
       "/api/customers/c1/avatar/extract-from-image",
       expect.any(FormData),
-      { headers: { "Content-Type": undefined }, timeout: 90_000 },
+      { timeout: 240_000 },
     );
     const sentFormData = mockedApiClient.post.mock.calls[0][1] as FormData;
     expect(sentFormData.get("FrontImageFile")).toBe(frontFile);

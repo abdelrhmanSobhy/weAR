@@ -28,7 +28,7 @@ const extractErrorMessage = (error: unknown): { message: string; fieldErrors?: R
       return { message: msg ?? "The AI model could not process the uploaded images. Please upload clear full-body front and side-view photos with plain background and form-fitting clothes.", fieldErrors };
     }
     if (error.response?.status === 422 || error.response?.status === 400) {
-      return { message: msg ?? "Validation failed. Check that both images are JPEG/PNG under 5 MB and height is valid.", fieldErrors };
+      return { message: msg ?? "Validation failed. Check that both images are JPEG/PNG under 10 MB and height is valid.", fieldErrors };
     }
     if (!error.response) return { message: "Network error. Check your connection and try again." };
     return { message: msg ?? "Extraction failed. Try another photo pair or enter measurements manually.", fieldErrors };
@@ -56,7 +56,7 @@ export function CustomerAvatarPhotoPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]> | null>(null);
   const [result, setResult] = useState<CustomerAvatar | null>(null);
   const [traceId, setTraceId] = useState<string | null>(null);
-  const extractionStages = ["Analyzing your images…", "Extracting measurements…", "Generating your 3D avatar…", "This may take up to 30 seconds…"];
+  const extractionStages = ["Analyzing your images…", "Extracting measurements…", "Generating your 3D avatar…", "This can take up to 1–2 minutes while we extract measurements and generate your 3D avatar…"];
   const [stageIndex, setStageIndex] = useState(0);
   const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
@@ -96,7 +96,7 @@ export function CustomerAvatarPhotoPage() {
   const submitDisabled = extract.isPending || !frontFile || !sideFile || !(Number(heightCm) >= 1 && Number(heightCm) <= 300);
   return (
     <div className="space-y-6">
-      <CustomerPageHeader title="Photo avatar extraction" description="Upload one front-view and one side-view full-body JPEG or PNG image (up to 5 MB each) and provide your height." />
+      <CustomerPageHeader title="Photo avatar extraction" description="Upload one front-view and one side-view full-body JPEG or PNG image (up to 10 MB each) and provide your height." />
 
       <Card className="border-[#E4DCD1] bg-[#FAF7F4]">
         <CardHeader>
@@ -135,13 +135,13 @@ export function CustomerAvatarPhotoPage() {
             <form onSubmit={onSubmit} className="grid gap-4">
               <Field id="frontImageFile" label="Front full-body image">
                 <Input id="frontImageFile" name="frontImageFile" type="file" accept="image/jpeg,image/png" onChange={onFileChange(setFrontFile)} aria-describedby="frontImageFile-hint" />
-                <p id="frontImageFile-hint" className="text-xs text-[#6F625B]">Clear front-view photo. JPEG or PNG, maximum 5 MB.</p>
+                <p id="frontImageFile-hint" className="text-xs text-[#6F625B]">Clear front-view photo. JPEG or PNG, maximum 10 MB.</p>
               </Field>
               {frontFile ? <p className="text-sm text-[#4D433D]">Selected front: {frontFile.name}</p> : null}
               {frontPreviewUrl ? <img src={frontPreviewUrl} alt="Selected front avatar source preview" className="max-h-64 rounded-2xl border object-contain" /> : null}
               <Field id="sideImageFile" label="Side full-body image">
                 <Input id="sideImageFile" name="sideImageFile" type="file" accept="image/jpeg,image/png" onChange={onFileChange(setSideFile)} aria-describedby="sideImageFile-hint" />
-                <p id="sideImageFile-hint" className="text-xs text-[#6F625B]">Clear side-view photo. JPEG or PNG, maximum 5 MB.</p>
+                <p id="sideImageFile-hint" className="text-xs text-[#6F625B]">Clear side-view photo. JPEG or PNG, maximum 10 MB.</p>
               </Field>
               {sideFile ? <p className="text-sm text-[#4D433D]">Selected side: {sideFile.name}</p> : null}
               {sidePreviewUrl ? <img src={sidePreviewUrl} alt="Selected side avatar source preview" className="max-h-64 rounded-2xl border object-contain" /> : null}

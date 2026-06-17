@@ -124,7 +124,7 @@ export interface ExtractAvatarFromImageInput {
   heightCm: number;
 }
 
-export const MAX_AVATAR_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MAX_AVATAR_IMAGE_BYTES = 10 * 1024 * 1024;
 export const AVATAR_IMAGE_TYPES = ["image/jpeg", "image/png"] as const;
 
 export const mapManualMeasurementsToPayload = (input: ManualMeasurementsInput & { bodyShape?: BodyShape | string | null }): BodyMeasurements => {
@@ -159,7 +159,7 @@ export const validateAvatarImageFile = (file: File): void => {
     throw new Error("Avatar photo must not be empty");
   }
   if (file.size > MAX_AVATAR_IMAGE_BYTES) {
-    throw new Error("Avatar photo must be 5 MB or smaller");
+    throw new Error("Avatar photo must be 10 MB or smaller");
   }
 };
 

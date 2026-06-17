@@ -23,8 +23,8 @@ describe("avatar measurement and photo helpers", () => {
     expect(() => validateAvatarImageFile(fileOfSize("image/webp", 10))).toThrow(/JPEG or PNG/);
   });
 
-  it("enforces the 5 MB image limit", () => {
-    expect(() => validateAvatarImageFile(fileOfSize("image/png", MAX_AVATAR_IMAGE_BYTES + 1))).toThrow(/5 MB/);
+  it("enforces the 10 MB image limit", () => {
+    expect(() => validateAvatarImageFile(fileOfSize("image/png", MAX_AVATAR_IMAGE_BYTES + 1))).toThrow(/10 MB/);
   });
 
   it("rejects empty (zero-byte) images", () => {
