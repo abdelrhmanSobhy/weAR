@@ -49,7 +49,7 @@ export type CustomerAddressPayload = Omit<CustomerAddress, "id" | "isDefault"> &
 
 export const measurementFieldConfigs = [
   { key: "heightCm", label: "Height", unit: "cm", required: true, min: 1, max: 300 },
-  { key: "weightKg", label: "Weight", unit: "kg", required: true, min: 1, max: 400 },
+  { key: "weightKg", label: "Weight", unit: "kg", required: false, min: 1, max: 400 },
   { key: "chestCm", label: "Chest", unit: "cm", required: false, min: 1, max: 250 },
   { key: "waistCm", label: "Waist", unit: "cm", required: false, min: 1, max: 250 },
   { key: "hipsCm", label: "Hips", unit: "cm", required: false, min: 1, max: 250 },
@@ -64,7 +64,7 @@ export type BodyMeasurements = Partial<Record<MeasurementFieldKey, number | null
 };
 export type ManualMeasurementsInput = Partial<Record<MeasurementFieldKey, number | null>> & {
   heightCm: number;
-  weightKg: number;
+  weightKg?: number;
 };
 
 const optionalMeasurement = z.preprocess(
@@ -74,7 +74,7 @@ const optionalMeasurement = z.preprocess(
 
 export const manualMeasurementSchema = z.object({
   heightCm: z.number().min(1).max(300),
-  weightKg: z.number().min(1).max(400),
+  weightKg: z.number().min(1).max(400).optional(),
   chestCm: optionalMeasurement.optional(),
   waistCm: optionalMeasurement.optional(),
   hipsCm: optionalMeasurement.optional(),
