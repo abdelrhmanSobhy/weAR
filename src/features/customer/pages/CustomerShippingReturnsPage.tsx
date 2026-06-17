@@ -119,7 +119,7 @@ export function CustomerShippingReturnsPage() {
           </p>
           <h1
             id="sr-heading"
-            className="mb-4 text-3xl font-bold tracking-tight text-[#2F2925] sm:text-4xl"
+            className="mb-4 font-['Playfair_Display'] text-3xl font-normal text-[#2F2925] sm:text-4xl"
           >
             Shipping & Returns
           </h1>
@@ -146,7 +146,7 @@ export function CustomerShippingReturnsPage() {
                 "flex flex-col items-center p-5 text-center",
               )}
             >
-              <p className="text-xl font-bold text-[#A37E6B]">{item.value}</p>
+              <p className="text-xl font-bold text-[#9c6b54]">{item.value}</p>
               <p className={cn("mt-1 text-sm", customerTheme.mutedText)}>
                 {item.label}
               </p>
@@ -159,9 +159,9 @@ export function CustomerShippingReturnsPage() {
       {POLICY_SECTIONS.map((section) => (
         <section key={section.id} aria-labelledby={`${section.id}-heading`}>
           <div className="mb-5 flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F4EDE7]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fef7f0]">
               <section.icon
-                className="h-5 w-5 text-[#A37E6B]"
+                className="h-5 w-5 text-[#9c6b54]"
                 aria-hidden="true"
               />
             </span>
@@ -194,7 +194,7 @@ export function CustomerShippingReturnsPage() {
       {/* Footer note */}
       <p
         className={cn(
-          "rounded-2xl border border-[#E4DCD1] bg-[#F4EDE7] p-5 text-sm leading-relaxed",
+          "rounded-2xl border border-[#e8ddd5] bg-[#fef7f0] p-5 text-sm leading-relaxed",
           customerTheme.mutedText,
         )}
         role="note"

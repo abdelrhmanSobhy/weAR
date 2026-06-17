@@ -66,6 +66,9 @@ type FlatAvatarResponse = {
   shoeSizeEu?: number | null;
   bodyShape?: string | null;
   avatar3dModelUrl?: string | null;
+  avatarFrontImageUrl?: string | null;
+  avatarSideImageUrl?: string | null;
+  avatar2dImageUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
   lastMeasuredAt?: string;
@@ -93,14 +96,46 @@ type AvatarHistoryItem = {
 
 type AvatarHistoryResponse = Partial<PaginatedCustomerResponse<AvatarHistoryItem>>;
 
-const toManualPayload = (
+type BackendAvatarMeasurementPayload = {
+  avatarId?: string;
+  heightCm: number;
+  weightKg: number;
+  chestCm: number | null;
+  waistCm: number | null;
+  hipsCm: number | null;
+  shoulderWidthCm: number | null;
+  inseamCm: number | null;
+  neckCm: number | null;
+  armLengthCm: number | null;
+  shoeSizeEu: number | null;
+  bodyShape: string | null;
+  source: "Manual";
+};
+
+const toBackendAvatarMeasurements = (
   measurements: BodyMeasurements,
   avatarId?: string,
-): Record<string, unknown> => ({
-  ...(avatarId !== undefined ? { avatarId } : {}),
-  ...measurements,
-  source: "manual",
-});
+): BackendAvatarMeasurementPayload => {
+  if (!measurements.heightCm || !measurements.weightKg) {
+    throw new Error("Height and weight are required by the avatar backend.");
+  }
+
+  return {
+    avatarId,
+    heightCm: measurements.heightCm,
+    weightKg: measurements.weightKg,
+    chestCm: measurements.chestCm ?? null,
+    waistCm: measurements.waistCm ?? null,
+    hipsCm: measurements.hipsCm ?? null,
+    shoulderWidthCm: measurements.shoulderCm ?? null,
+    inseamCm: measurements.inseamCm ?? null,
+    neckCm: measurements.neckCm ?? null,
+    armLengthCm: measurements.armLengthCm ?? null,
+    shoeSizeEu: measurements.shoeSizeEu ?? null,
+    bodyShape: measurements.bodyShape ?? null,
+    source: "Manual",
+  };
+};
 
 const mapFlatAvatarToCustomerAvatar = (
   avatar: FlatAvatarResponse,
@@ -120,9 +155,16 @@ const mapFlatAvatarToCustomerAvatar = (
         avatar.shoulderWidthCm ??
         null,
       inseamCm: avatar.inseamCm ?? null,
+      neckCm: avatar.neckCm ?? null,
+      armLengthCm: avatar.armLengthCm ?? null,
+      shoeSizeEu: avatar.shoeSizeEu ?? null,
+      bodyShape: avatar.bodyShape ?? null,
     },
   ),
   avatar3dModelUrl: avatar.avatar3dModelUrl ?? null,
+  avatarFrontImageUrl: avatar.avatarFrontImageUrl ?? null,
+  avatarSideImageUrl: avatar.avatarSideImageUrl ?? null,
+  avatar2dImageUrl: avatar.avatar2dImageUrl ?? null,
   createdAt: avatar.createdAt,
   updatedAt: avatar.updatedAt ?? avatar.lastMeasuredAt,
 });
@@ -166,6 +208,22 @@ const parseHistoryMeasurements = (
         typeof parsed.InseamCm === "number"
           ? parsed.InseamCm
           : null,
+      neckCm:
+        typeof parsed.NeckCm === "number"
+          ? parsed.NeckCm
+          : null,
+      armLengthCm:
+        typeof parsed.ArmLengthCm === "number"
+          ? parsed.ArmLengthCm
+          : null,
+      shoeSizeEu:
+        typeof parsed.ShoeSizeEu === "number"
+          ? parsed.ShoeSizeEu
+          : null,
+      bodyShape:
+        typeof parsed.BodyShape === "string"
+          ? parsed.BodyShape
+          : null,
     });
   } catch {
     return normalizeNullableMeasurements({});
@@ -193,7 +251,7 @@ export const avatarApi = {
   createAvatar: async (customerId: string, measurements: BodyMeasurements): Promise<string> => {
     const response = await apiClient.post(
       `/api/customers/${customerId}/avatar`,
-      toManualPayload(measurements),
+      toBackendAvatarMeasurements(measurements),
     );
     return unwrapCustomerApiData<string>(response.data);
   },
@@ -255,7 +313,7 @@ export const avatarApi = {
   updateMeasurements: async (customerId: string, avatarId: string, measurements: BodyMeasurements): Promise<void> => {
     await apiClient.patch(
       `/api/customers/${customerId}/avatar/measurements`,
-      toManualPayload(measurements, avatarId),
+      toBackendAvatarMeasurements(measurements, avatarId),
     );
   },
   getSizeRecommendation: async (customerId: string, productId: string, signal?: AbortSignal) => {
@@ -274,9 +332,7 @@ export const avatarApi = {
       `/api/customers/${customerId}/avatar/extract-from-image`,
       formData,
       {
-        headers: {
-          "Content-Type": undefined,
-        },
+        timeout: 240_000,
       },
     );
 

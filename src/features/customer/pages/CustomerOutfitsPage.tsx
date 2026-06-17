@@ -55,7 +55,7 @@ function OutfitCard({ outfit, onDelete }: OutfitCardProps) {
           ))}
         </div>
       ) : (
-        <div className="flex aspect-video items-center justify-center rounded-lg bg-[#F4EDE7]">
+        <div className="flex aspect-video items-center justify-center rounded-lg bg-[#fef7f0]">
           <Layers className="h-10 w-10 text-[#C4A99A]" aria-hidden="true" />
         </div>
       )}
@@ -65,7 +65,7 @@ function OutfitCard({ outfit, onDelete }: OutfitCardProps) {
           {outfit.name ?? "Untitled outfit"}
         </h2>
         {outfit.style && (
-          <p className="mt-0.5 text-sm text-[#A37E6B]">{outfit.style}</p>
+          <p className="mt-0.5 text-sm text-[#9c6b54]">{outfit.style}</p>
         )}
         <p className="mt-1 text-sm text-[#6F625B]">
           {outfit.itemCount} {outfit.itemCount === 1 ? "item" : "items"}
@@ -74,7 +74,7 @@ function OutfitCard({ outfit, onDelete }: OutfitCardProps) {
 
       <div className="flex flex-col gap-2">
         <p
-          className="rounded-lg border border-[#E4DCD1] bg-[#FAF7F5] p-3 text-center text-xs text-[#6F625B]"
+          className="rounded-lg border border-[#e8ddd5] bg-[#FAF7F5] p-3 text-center text-xs text-[#6F625B]"
           role="note"
           aria-label="Feature temporarily unavailable"
         >
@@ -357,13 +357,13 @@ function FavoritesPrerequisitePanel({
                 <Heart
                   className={cn(
                     "h-4 w-4",
-                    added.has(id) ? "fill-[#A37E6B] text-[#A37E6B]" : "text-[#C4A99A]",
+                    added.has(id) ? "fill-[#9c6b54] text-[#9c6b54]" : "text-[#C4A99A]",
                   )}
                   aria-hidden="true"
                 />
                 <span className="truncate font-mono text-xs">{id}</span>
                 {added.has(id) && (
-                  <span className="text-xs text-[#A37E6B]">added</span>
+                  <span className="text-xs text-[#9c6b54]">added</span>
                 )}
               </li>
             ))}
@@ -534,7 +534,7 @@ export function CustomerOutfitsPage() {
         aria-busy="true"
         aria-label="Loading outfits"
       >
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
           Outfits
         </p>
         <h1 className="mt-2 text-3xl font-semibold text-[#2F2925]">
@@ -548,7 +548,7 @@ export function CustomerOutfitsPage() {
   if (query.isError) {
     return (
       <section className={cn(customerTheme.card, "p-8")} role="alert">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
           Outfits
         </p>
         <h1 className="mt-2 text-3xl font-semibold text-[#2F2925]">
@@ -604,7 +604,7 @@ export function CustomerOutfitsPage() {
         {/* Header */}
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
               Outfits
             </p>
             <h1 className="mt-2 text-4xl font-semibold text-[#2F2925]">
@@ -649,10 +649,10 @@ export function CustomerOutfitsPage() {
             role="status"
             aria-label="No saved outfits"
           >
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#F4EDE7] text-[#A37E6B]">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#fef7f0] text-[#9c6b54]">
               <Layers className="h-7 w-7" aria-hidden="true" />
             </div>
-            <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-[#A37E6B]">
+            <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-[#9c6b54]">
               Outfits
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-[#2F2925]">

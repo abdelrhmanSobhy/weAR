@@ -1,4 +1,6 @@
 import React from "react";
+import { cn } from "@/lib/utils";
+import { customerTheme } from "@/features/customer/styles/customerTheme";
 import logoImage from "@/assets/auth/logo.webp";
 
 interface CustomerAuthLayoutProps {
@@ -7,47 +9,44 @@ interface CustomerAuthLayoutProps {
   imageAlt: string;
 }
 
-export function CustomerAuthLayout({
-  children,
-  imageSrc,
-  imageAlt,
-}: CustomerAuthLayoutProps) {
+function WeArLogoAuth() {
   return (
-    <div className="relative flex h-screen w-full flex-col items-center justify-center overflow-hidden bg-white p-4 pt-24 md:p-4 md:pt-20 font-sans">
-      <div className="absolute left-6 top-4 z-20 md:left-8 md:top-6">
-        <div className="flex items-center gap-2">
-          <div className="h-[60px] w-[65px] overflow-hidden md:h-[80px] md:w-[85px]">
-            <img
-              src={logoImage}
-              alt="weAR logo"
-              className="h-full w-full object-contain"
-            />
-          </div>
-          <span
-            className="translate-y-[1px] text-[#A37E6B]"
-            style={{
-              fontFamily: "Allura, cursive",
-              fontWeight: 400,
-              fontSize: "36px",
-              lineHeight: "100%",
-              letterSpacing: "0.01em",
-            }}
-          >
-            weAR
-          </span>
-        </div>
+    <div className="flex items-center gap-1">
+      <div className="h-15 w-16.25 overflow-hidden">
+        <img src={logoImage} alt="weAR logo" className="h-full w-full object-contain" />
+      </div>
+      <span
+        className={cn("text-[28px] leading-none", customerTheme.logoFont)}
+        style={{ color: "#9f8062" }}
+      >
+        weAR
+      </span>
+    </div>
+  );
+}
+
+export function CustomerAuthLayout({ children, imageSrc, imageAlt }: CustomerAuthLayoutProps) {
+  return (
+    <div className="min-h-screen w-full bg-white flex flex-col">
+      {/* Logo */}
+      <div className="px-8 pt-6">
+        <WeArLogoAuth />
       </div>
 
-      <div className="mx-auto flex h-[calc(100vh-132px)] w-full max-w-[1440px] flex-col items-center justify-center md:pl-16 lg:pl-24">
-        <div className="flex h-full w-full flex-col md:flex-row md:items-stretch md:justify-center md:gap-[65px]">
+      {/* Content */}
+      <div className="flex flex-1 items-center justify-center px-4 py-8">
+        <div className="flex w-full max-w-275 gap-8 md:gap-12 items-stretch">
+
+          {/* Form card */}
           <section
-            className="flex h-full w-full shrink-0 flex-col justify-center overflow-hidden rounded-[28px] border border-[#C9A390] bg-white px-7 py-6 md:w-[560px] md:px-10 md:py-7"
-            style={{ boxShadow: "0px 0px 30px 0px rgba(182, 160, 146, 0.18)" }}
+            className="w-full shrink-0 rounded-2xl border border-[#e8ddd5] bg-white px-8 py-10 md:w-120 md:px-10"
+            style={{ boxShadow: "0 4px 24px rgba(156,107,84,0.10)" }}
           >
             {children}
           </section>
 
-          <section className="hidden h-full w-full flex-1 overflow-hidden rounded-[28px] md:block">
+          {/* Illustration */}
+          <section className="hidden flex-1 overflow-hidden rounded-2xl bg-[#f5ede6] md:block">
             <img
               src={imageSrc}
               alt={imageAlt}
@@ -55,21 +54,11 @@ export function CustomerAuthLayout({
             />
           </section>
         </div>
+      </div>
 
-        <div className="mt-2 flex w-full flex-col md:flex-row md:justify-center md:gap-[65px]">
-          <footer
-            className="w-full text-center text-[#BFC7DE] md:w-[560px] shrink-0"
-            style={{
-              fontFamily: "Roboto, sans-serif",
-              fontWeight: 400,
-              fontSize: "16px",
-              letterSpacing: "0.02em",
-            }}
-          >
-            © 2025 ALL RIGHTS RESERVED
-          </footer>
-          <div className="hidden w-full flex-1 md:block"></div>
-        </div>
+      {/* Bottom */}
+      <div className="pb-6 text-center text-[12px] text-[#9c6b54]">
+        © 2025 ALL RIGHTS RESERVED
       </div>
     </div>
   );

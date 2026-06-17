@@ -16,8 +16,8 @@ export function ProductRail({
   onToggleFavorite,
 }: ProductRailProps) {
   return (
-    <section aria-label={title} className="space-y-4">
-      <h2 className="text-2xl font-bold text-[#2F2925]">{title}</h2>
+    <section aria-label={title || "Product rail"} className="space-y-4">
+      {title && <h2 className="text-2xl font-bold text-[#2F2925]">{title}</h2>}
       <div className="flex gap-4 overflow-x-auto pb-3">
         {isLoading
           ? Array.from({ length: 4 }).map((_, index) => (

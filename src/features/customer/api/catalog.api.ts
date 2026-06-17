@@ -23,12 +23,22 @@ function normalizeProductImage(img: CustomerProductImage): CustomerProductImage 
 }
 
 function normalizeProduct(product: CustomerProduct): CustomerProduct {
+  const normalizedImages = product.images?.map(normalizeProductImage) ?? [];
+  const derivedImageUrl =
+    product.primaryImageUrl?.trim() ||
+    product.imageUrl?.trim() ||
+    normalizedImages.find((img) => img.isPrimary && img.url)?.url ||
+    normalizedImages.find((img) => img.url)?.url ||
+    null;
+
   return {
     ...product,
     views: product.views ?? product.viewsCount ?? null,
     categoryName: product.categoryName ?? product.category?.name ?? null,
     categoryId: product.categoryId ?? product.category?.id ?? null,
-    images: product.images?.map(normalizeProductImage),
+    images: normalizedImages,
+    imageUrl: derivedImageUrl,
+    primaryImageUrl: derivedImageUrl,
   };
 }
 
