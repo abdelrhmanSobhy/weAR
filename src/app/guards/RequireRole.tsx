@@ -7,6 +7,7 @@ import {
   type UserRole,
   useAuthStore,
 } from "@/features/auth/useAuthStore";
+import { getLoginPathForRole } from "@/lib/axios";
 
 type Props = {
   role: UserRole;
@@ -22,11 +23,11 @@ export function RequireRole({ role: requiredRole, children }: Props) {
   if (!hasHydrated) return null;
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return <Navigate to={getLoginPathForRole(requiredRole)} replace state={{ from: location }} />;
   }
 
   if (!role || role !== requiredRole) {
-    return <Navigate to={role ? getHomePathForRole(role) : "/login"} replace />;
+    return <Navigate to={role ? getHomePathForRole(role) : getLoginPathForRole(requiredRole)} replace />;
   }
 
   return <>{children}</>;

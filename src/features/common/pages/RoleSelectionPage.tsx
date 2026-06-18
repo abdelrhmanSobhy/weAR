@@ -24,7 +24,7 @@ export function RoleSelectionPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 w-full max-w-[1100px] relative z-10">
         <div
-          onClick={() => navigate("/customer/onboarding")}
+          onClick={() => navigate("/login/customer")}
           className="group flex flex-col items-center text-center bg-white p-10 rounded-[24px] border border-[#E4DCD1] shadow-sm hover:shadow-xl hover:border-[#C9A390] transition-all duration-300 cursor-pointer transform hover:-translate-y-2"
         >
           <div className="w-20 h-20 rounded-full bg-[#FEF9F2] text-[#C9A390] flex items-center justify-center mb-6 group-hover:bg-[#C9A390] group-hover:text-white transition-colors duration-300">

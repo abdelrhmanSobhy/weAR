@@ -1,5 +1,50 @@
 import axios from "axios";
-import { useAuthStore } from "@/features/auth/useAuthStore";
+import { useAuthStore, type RetailerProfile, type UserRole } from "@/features/auth/useAuthStore";
+
+
+type RefreshAuthData = {
+  accessToken: string;
+  refreshToken: string;
+  retailerProfile?: RetailerProfile | null;
+  customerProfile?: RetailerProfile | null;
+  profile?: RetailerProfile | null;
+  user?: RetailerProfile | null;
+};
+
+export const getProfileFromRefreshData = (
+  authData: RefreshAuthData,
+  role: UserRole | null,
+  fallbackProfile: RetailerProfile | null,
+): RetailerProfile | null => {
+  if (role === "customer") {
+    return (
+      authData.customerProfile ??
+      authData.profile ??
+      authData.user ??
+      fallbackProfile ??
+      null
+    );
+  }
+
+  if (role === "retailer") {
+    return authData.retailerProfile ?? fallbackProfile ?? null;
+  }
+
+  return (
+    authData.profile ??
+    authData.user ??
+    authData.retailerProfile ??
+    authData.customerProfile ??
+    fallbackProfile ??
+    null
+  );
+};
+
+export const getRefreshEndpointForRole = (role: UserRole | null): string =>
+  role === "customer" ? "/api/customer/auth/refresh" : "/api/auth/refresh-token";
+
+export const getLoginPathForRole = (role: UserRole | null): string =>
+  role === "customer" ? "/login/customer" : "/login/retailer";
 
 export const apiClient = axios.create({
   baseURL:
@@ -15,7 +60,6 @@ function getTokenFromLocalStorage(): string | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
 
-    // Zustand persist may store state under `state` or directly
     return (
       parsed?.state?.accessToken ||
       parsed?.accessToken ||
@@ -28,21 +72,39 @@ function getTokenFromLocalStorage(): string | null {
   }
 }
 
+const AUTH_SKIP_PATHS = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/complete-profile",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+  "/auth/refresh",
+  "/auth/refresh-token",
+  "/auth/logout",
+];
+
 apiClient.interceptors.request.use(
   (config) => {
-    let token = useAuthStore.getState().accessToken;
+    const url = String(config.url || "");
+    const isAuthPath = AUTH_SKIP_PATHS.some((path) => url.includes(path));
 
-    // fallback to localStorage (in case persist hasn't hydrated yet)
-    if (!token && typeof window !== "undefined") {
-      token = getTokenFromLocalStorage();
+    if (!isAuthPath) {
+      let token = useAuthStore.getState().accessToken;
+
+      if (!token && typeof window !== "undefined") {
+        token = getTokenFromLocalStorage();
+      }
+
+      if (token) {
+        config.headers = config.headers || {};
+        (config.headers as Record<string, string>)["Authorization"] =
+          `Bearer ${token}`;
+      }
     }
 
-    if (token) {
-      config.headers = config.headers || {};
-      // ensure header property exists and is set safely
-      // some Axios versions use AxiosHeaders; using bracket notation is robust
-      (config.headers as Record<string, string>)["Authorization"] =
-        `Bearer ${token}`;
+    /* Let the browser/axios set the correct multipart boundary for FormData */
+    if (config.data instanceof FormData) {
+      delete (config.headers as Record<string, string>)["Content-Type"];
     }
 
     return config;
@@ -78,7 +140,10 @@ apiClient.interceptors.response.use(
       requestUrl.includes("/auth/register") ||
       requestUrl.includes("/auth/complete-profile") ||
       requestUrl.includes("/auth/forgot-password") ||
-      requestUrl.includes("/auth/reset-password");
+      requestUrl.includes("/auth/reset-password") ||
+      requestUrl.includes("/auth/refresh") ||
+      requestUrl.includes("/auth/refresh-token") ||
+      requestUrl.includes("/auth/logout");
 
     if (
       error.response?.status === 401 &&
@@ -96,28 +161,36 @@ apiClient.interceptors.response.use(
               `Bearer ${token}`;
             return apiClient(originalRequest);
           })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
+          .catch((err) => Promise.reject(err));
       }
 
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const { accessToken, refreshToken, logout, login, role } =
+      const { accessToken, refreshToken, logout, login, role, user } =
         useAuthStore.getState();
 
       if (refreshToken && accessToken) {
         try {
           const res = await axios.post(
-            `${apiClient.defaults.baseURL}/api/auth/refresh-token`,
+            `${apiClient.defaults.baseURL}${getRefreshEndpointForRole(role)}`,
             { accessToken, refreshToken },
           );
 
           if (res.data.success && res.data.data.isSuccess) {
-            const newAuthData = res.data.data.data;
+            const newAuthData = res.data.data.data as RefreshAuthData;
+            const refreshedProfile = getProfileFromRefreshData(
+              newAuthData,
+              role,
+              user,
+            );
+
+            if (!refreshedProfile) {
+              throw new Error("Refresh response did not include a profile");
+            }
+
             login(
-              newAuthData.retailerProfile,
+              refreshedProfile,
               {
                 accessToken: newAuthData.accessToken,
                 refreshToken: newAuthData.refreshToken,
@@ -132,27 +205,23 @@ apiClient.interceptors.response.use(
               "Authorization"
             ] = `Bearer ${newAuthData.accessToken}`;
             return apiClient(originalRequest);
-          } else {
-            // Handle case where request succeeds but data indicates failure
-            processQueue(new Error("Refresh failed"));
-            logout();
-            window.location.href =
-              role === "customer" ? "/login/customer" : "/login/retailer";
-            return Promise.reject(error);
           }
+
+          processQueue(new Error("Refresh failed"));
+          logout();
+          window.location.href = getLoginPathForRole(role);
+          return Promise.reject(error);
         } catch (refreshError) {
           processQueue(refreshError, null);
           logout();
-          window.location.href =
-            role === "customer" ? "/login/customer" : "/login/retailer";
+          window.location.href = getLoginPathForRole(role);
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
         }
       } else {
         logout();
-        window.location.href =
-          role === "customer" ? "/login/customer" : "/login/retailer";
+        window.location.href = getLoginPathForRole(role);
         return Promise.reject(error);
       }
     }

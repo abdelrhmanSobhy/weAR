@@ -1,0 +1,112 @@
+# Customer Endpoint Coverage
+
+Status values:
+
+- **Verified UI used**
+- **UI used — contract alignment required**
+- **Adapter only**
+- **Complete supported scope**
+- **Not integrated**
+- **Backend defect**
+- **Deferred/blocked**
+
+## Authentication
+
+| Endpoint | Status | Notes |
+|---|---|---|
+| `POST /api/customer/auth/register` | Verified UI used | Signup. |
+| `POST /api/customer/auth/complete-profile` | Verified UI used | Two-step completion; re-audit exact Swagger fields during auth regression work. |
+| `POST /api/customer/auth/login` | Verified UI used | Customer login. |
+| `POST /api/customer/auth/refresh` | Verified UI used | Role-aware Customer refresh. |
+| `POST /api/customer/auth/logout` | Verified UI used | Backend attempt plus guaranteed local cleanup. |
+| `POST /api/customer/auth/forgot-password` | Verified UI used | OTP request. |
+| `POST /api/customer/auth/reset-password` | Verified UI used | OTP reset. |
+| `POST /api/customer/auth/login/google` | Deferred/blocked | Requires runtime client ID and deployed response confirmation. |
+
+## Profile and Addresses
+
+All current profile/address list, create, update, delete and default-selection flows are **Verified UI used**. Address detail remains **Adapter only**.
+
+## Catalog
+
+| Endpoint | Status | Notes |
+|---|---|---|
+| `GET /api/catalog/products` | Verified UI used | Home/Shop; normalized envelopes and `primaryImageUrl`. |
+| `GET /api/catalog/products/{productId}` | Verified UI used | Product Details normalization fixed. |
+| `GET /api/catalog/products/{productId}/similar` | Verified UI used | Recommendation rail. |
+| `POST /api/catalog/products/compare` | Verified UI used | `/customer/compare`. |
+| `POST /api/catalog/products/by-model-ids` | Adapter only | Planned for AI suggestions when required. |
+| `GET /api/catalog/categories` | Verified UI used | Home/Shop. |
+| `GET /api/catalog/offers` | Verified UI used | Home. |
+
+## Favorites
+
+Toggle, list and check endpoints are **Verified UI used**. Saved Outfits uses explicit user-triggered favorite recovery.
+
+## Avatar
+
+| Endpoint | Status | Next action |
+|---|---|---|
+| `GET /api/customers/{customerId}/avatar` | Verified UI used | Preserve 404 → no Avatar. |
+| `POST /api/customers/{customerId}/avatar` | UI used — contract alignment required | Root fields, source, UUID response. |
+| `PATCH /api/customers/{customerId}/avatar/measurements` | UI used — contract alignment required | Include avatarId; 204. |
+| `DELETE /api/customers/{customerId}/avatar` | UI used — contract alignment required | Body `{ avatarId }`; 204. |
+| `GET /api/customers/{customerId}/avatar/history` | UI used — contract alignment required | Paginated; parse measurementDataJson safely. |
+| `GET /api/customers/{customerId}/avatar/size-recommendation/{productId}` | UI used — contract alignment required | Map confidenceScore and justification. |
+| `POST /api/customers/{customerId}/avatar/extract-from-image` | Verified UI used | Multipart `ImageFile`/`HeightCm`; preserve Content-Type override and flat normalization. |
+
+## Saved Outfits
+
+| Endpoint | Status | Verified behavior |
+|---|---|---|
+| `GET /api/customers/{customerId}/outfits` | Complete supported scope | 200 paginated list. |
+| `POST /api/customers/{customerId}/outfits` | Complete supported scope | 201; `data` UUID string. |
+| create without Favorites | Complete supported scope | 422 `INVALID_OUTFIT_ITEMS`; explicit recovery action. |
+| `DELETE /api/customers/{customerId}/outfits/{outfitId}` | Complete supported scope | 204 empty body. |
+| missing/deleted detail | Complete supported scope | 404 `NOT_FOUND`. |
+| existing detail GET | Backend defect | 500 `INTERNAL_ERROR`; no detail UI. |
+| existing update PUT | Backend defect | 500 `INTERNAL_ERROR`; no edit UI. |
+| `GET /api/customers/{customerId}/outfits/complementary` | Verified UI used | Product Details; adapter tolerates direct arrays/envelopes. |
+
+## Try-on
+
+| Capability | Status | Next action |
+|---|---|---|
+| create session | UI used — contract alignment required | Body: productId, numeric sessionType, optional avatarId; customerId in URL. |
+| 2D result | Verified UI used | `resultImageUrl` fallback. |
+| sessions/history | UI used — contract alignment required | Paginated response and documented fields. |
+| session detail/product sessions | Adapter only | Use only when stable UI needs them. |
+| 3D Avatar display | Verified UI used | Lazy viewer; garment semantics unconfirmed. |
+| AR live view | Deferred/blocked | Outside current scope unless explicitly approved. |
+
+## AI Outfit Suggestions
+
+| Endpoint | Status | Notes |
+|---|---|---|
+| `POST /api/customer/wardrobe/suggestions` | Complete supported scope — runtime-verified | `weatherCondition` required (HTTP 400 confirmed). Generate response runtime-verified (two tests, 2026-06-14): `data` direct array; `title`/`description`/`matchPercentage`/`styleTags`/`items` confirmed. Item fields runtime-verified: `id`, `productId`, `slot` (string, display-only), `displayOrder`, `productName`, `price`, `primaryImageUrl`, `stockStatus`. No `suggestionId` or numeric `slotType` in any tested response. Backend may return a subset of requested `productIds`. Adapter normalizes three response shapes. `suggestionId: string \| null`; save disabled when null. Embedded item fields rendered without a second product lookup. |
+| `POST /api/customer/wardrobe/suggestions/save` | Complete supported scope — Swagger-only | Strict non-empty string response required; throws `SuggestionApiError` on invalid response. All products must be resolved with valid productId and slotType before save is enabled. Favorites prerequisite (INVALID_OUTFIT_ITEMS) handled with explicit UI guidance; no automatic Favorites mutation. Not deployed-verified. |
+| `POST /api/catalog/products/by-model-ids` | Adapter only — conditional | Called only when suggestion response products have no productId but have a modelId. Skipped when all products already carry productId. |
+
+## Wardrobe Collections
+
+| Endpoint | Status | Notes |
+|---|---|---|
+| `GET /api/customers/{customerId}/wardrobe/collections` | Complete supported scope — **runtime-verified** | Command 20. HTTP 200, `data` is a direct array. After add, reflects `itemCount:1` and `coverImageUrl`. Synthesized pagination. |
+| `POST /api/customers/{customerId}/wardrobe/collections` | Complete supported scope — **runtime-verified** | Command 20. HTTP 201, `data` is UUID string. Duplicate name → HTTP 409 CONFLICT (runtime-verified); form stays open, values preserved. |
+| `PATCH /api/customers/{customerId}/wardrobe/collections/{collectionId}` | Complete supported scope — **runtime-verified** | Command 20. PATCH `{ newName }` → HTTP 204. PUT → 405. Blank newName → HTTP 422 InvalidName (runtime-verified); dialog stays open. |
+| `DELETE /api/customers/{customerId}/wardrobe/collections/{collectionId}` | Complete supported scope — **runtime-verified** | Command 20. HTTP 204; subsequent GET confirmed removal. Selected collection cleared on delete. Item queries invalidated. |
+| `GET /api/customers/{customerId}/wardrobe/collections/{collectionId}/items` | Complete supported scope — **runtime-verified (empty case)** | Command 20. HTTP 200 with paginated `data.items` envelope (empty case verified). **After add returns HTTP 500 INTERNAL_ERROR (backend read defect)** — items panel shows error/retry. |
+| `POST /api/customers/{customerId}/wardrobe/collections/{collectionId}/items` | Complete supported scope — **runtime-verified** | Command 20. HTTP 204, empty body. Add persisted (itemCount updated). Duplicate productId → 204 (idempotent in tested deployment). No UUID returned. No client-side duplicate fabricated. |
+| `DELETE /api/customers/{customerId}/wardrobe/collections/{collectionId}/items/{itemId}` | **Swagger-only / runtime-blocked** | Command 20. Swagger: 204 expected. Runtime-blocked: `itemId` unavailable (list items after add returns 500). Uses `itemId`, not `productId`. |
+
+## Fit Feedback
+
+| Endpoint | Status | Notes |
+|---|---|---|
+| `POST /api/customers/{customerId}/feedback` | Deferred/blocked | Command 21. Requires real completed `orderId` and `orderItemId`. Never use fake IDs. |
+| `GET /api/customers/{customerId}/feedback/orders/{orderId}` | Deferred/blocked | Command 21. Requires real `orderId`. |
+| `GET /api/catalog/products/{productId}/fit-statistics` | Not integrated | Command 21. Path unconfirmed. May be safe to implement without order data. |
+
+## Backend-blocked commerce
+
+Persistent cart, checkout submission, order creation, Customer payment, tracking and server shipping/tax/coupon calculation remain unconfirmed.
