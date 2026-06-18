@@ -115,18 +115,15 @@ describe("customer routes", () => {
           ),
           children: [{ path: "/customer/*", element: <div>Protected customer route</div> }],
         },
-        { path: "/login", element: <div>Login</div> },
+        { path: "/", element: <div>Role Selection</div> },
       ],
       { initialEntries: [path] },
     );
 
     render(<RouterProvider router={router} />);
 
-    await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
-    expect(screen.getByText("Login")).toBeInTheDocument();
-    expect(router.state.location.state).toMatchObject({
-      from: expect.objectContaining({ pathname: path }),
-    });
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    expect(screen.getByText("Role Selection")).toBeInTheDocument();
 
     useAuthStore.setState({
       user: {

@@ -15,7 +15,7 @@ export function RequireAuth({ children }: Props) {
   if (!hasHydrated) return null;
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return <Navigate to="/" replace state={{ from: location }} />;
   }
 
   return <>{children}</>;
