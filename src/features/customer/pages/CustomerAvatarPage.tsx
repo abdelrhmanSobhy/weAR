@@ -1,4 +1,6 @@
-import { lazy, Suspense } from "react";
+import type React from "react";
+import axios from "axios";
+import { lazy, Suspense, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   AvatarMeasurementGrid,
@@ -11,6 +13,7 @@ import {
   useDeleteCustomerAvatar,
   useRepairAvatarSourceImage,
 } from "@/features/customer/queries/profileAvatar.queries";
+import { validateAvatarImageFile } from "@/features/customer/types/profileAvatar";
 import { CUSTOMER_ROUTES } from "@/features/customer/routes/customerRoutes";
 import { customerTheme } from "@/features/customer/styles/customerTheme";
 import { TryOnViewerErrorBoundary } from "@/features/customer/try-on/components/TryOnViewerErrorBoundary";
@@ -25,6 +28,18 @@ const btnPrimary =
 const btnOutline =
   "inline-flex h-11 items-center rounded-xl border border-[#e8ddd5] px-5 text-sm font-medium text-[#2F2925] transition-colors hover:bg-[#fef7f0] disabled:opacity-60";
 
+const extractRepairErrorMessage = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    const code = error.response?.data?.code ?? error.response?.data?.Code;
+    if (code === "AvatarSourceImageAlreadyExists") return "This avatar already has a source image. No repair is needed.";
+    if (code === "INVALID_FILE_TYPE") return "Please upload a JPEG or PNG image.";
+    if (error.response?.status === 404) return "No avatar was found. Please create an avatar first.";
+    const msg = error.response?.data?.message ?? error.response?.data?.error?.message;
+    if (typeof msg === "string" && msg.trim()) return msg;
+  }
+  return "Repair failed. Please try again.";
+};
+
 export function CustomerAvatarPage() {
   const location = useLocation();
   const returnTo = getSafeCustomerReturnRoute(
@@ -35,6 +50,52 @@ export function CustomerAvatarPage() {
   // const history = useCustomerAvatarHistory(); // temporarily disabled
   const deleteAvatar = useDeleteCustomerAvatar();
   const repairSourceImage = useRepairAvatarSourceImage();
+  const [repairFile, setRepairFile] = useState<File | null>(null);
+  const [repairRetry3D, setRepairRetry3D] = useState(true);
+  const [repairFileError, setRepairFileError] = useState<string | null>(null);
+  const [repairApiError, setRepairApiError] = useState<string | null>(null);
+  const [repairSuccessMsg, setRepairSuccessMsg] = useState<string | null>(null);
+
+  const onRepairFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setRepairFileError(null);
+    setRepairApiError(null);
+    setRepairSuccessMsg(null);
+    if (!file) { setRepairFile(null); return; }
+    try { validateAvatarImageFile(file); setRepairFile(file); }
+    catch (err) { setRepairFile(null); setRepairFileError(err instanceof Error ? err.message : "Invalid file"); }
+  };
+
+  const onRepairSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!repairFile) { setRepairFileError("Please choose a front-view JPEG or PNG image."); return; }
+    setRepairApiError(null);
+    setRepairSuccessMsg(null);
+    repairSourceImage.mutate(
+      { frontImageFile: repairFile, retryGenerate3D: repairRetry3D },
+      {
+        onSuccess: (updated) => {
+          setRepairFile(null);
+          if (updated.has2DCapability && updated.has3DCapability) {
+            setRepairSuccessMsg("2D try-on is now available. 3D try-on is now available too.");
+          } else if (updated.has2DCapability) {
+            setRepairSuccessMsg("2D try-on is now available. 3D is still unavailable, but you can use 2D now.");
+          } else {
+            setRepairSuccessMsg("Repair complete. Avatar updated.");
+          }
+        },
+        onError: (err) => {
+          const code = axios.isAxiosError(err) ? (err.response?.data?.code ?? err.response?.data?.Code) : null;
+          if (code === "AvatarSourceImageAlreadyExists") {
+            setRepairSuccessMsg("This avatar already has a source image. No repair is needed.");
+            avatar.refetch();
+          } else {
+            setRepairApiError(extractRepairErrorMessage(err));
+          }
+        },
+      },
+    );
+  };
 
   if (avatar.isLoading) return <InlineState title="Loading avatar" />;
   if (avatar.isError) return <InlineState tone="error" title="Could not load avatar" />;
@@ -131,24 +192,45 @@ export function CustomerAvatarPage() {
               </p>
             )}
             {!active.has2DCapability && !active.sourceImageUrl && (
-              <div className="mt-4 rounded-2xl bg-[#fef7f0] p-4">
-                <p className="text-sm text-[#6F625B]">
-                  This avatar is missing a source image needed for 2D try-on.
+              <div className="mt-4 rounded-2xl border border-[#e8ddd5] bg-[#fef7f0] p-4">
+                <p className="text-sm font-medium text-[#2F2925]">Your original photo is missing</p>
+                <p className="mt-1 text-sm text-[#6F625B]">
+                  Upload your front-view photo again to activate virtual try-on without losing your measurements.
                 </p>
-                <button
-                  type="button"
-                  disabled={repairSourceImage.isPending}
-                  onClick={() => repairSourceImage.mutate()}
-                  className={cn(btnOutline, "mt-3 text-[#9c6b54] border-[#9c6b54] hover:bg-[#9c6b54] hover:text-white")}
-                >
-                  {repairSourceImage.isPending ? "Repairing…" : "Repair source image"}
-                </button>
-                {repairSourceImage.isSuccess && (
-                  <p className="mt-2 text-sm text-green-700">Repair complete. Avatar updated.</p>
-                )}
-                {repairSourceImage.isError && (
-                  <p className="mt-2 text-sm text-red-600">Repair failed. Please try again or recreate the avatar.</p>
-                )}
+                <form onSubmit={onRepairSubmit} className="mt-3 space-y-3">
+                  <div>
+                    <label htmlFor="repairFrontImage" className="mb-1 block text-xs font-medium text-[#2F2925]">
+                      Front-view photo (JPEG or PNG, max 10 MB)
+                    </label>
+                    <input
+                      id="repairFrontImage"
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      onChange={onRepairFileChange}
+                      className="block w-full text-sm text-[#6F625B] file:mr-3 file:rounded-lg file:border-0 file:bg-[#9c6b54] file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white"
+                    />
+                    {repairFile && <p className="mt-1 text-xs text-[#6F625B]">Selected: {repairFile.name}</p>}
+                    {repairFileError && <p className="mt-1 text-xs text-red-600">{repairFileError}</p>}
+                  </div>
+                  <label className="flex items-center gap-2 text-sm text-[#2F2925]">
+                    <input
+                      type="checkbox"
+                      checked={repairRetry3D}
+                      onChange={(e) => setRepairRetry3D(e.target.checked)}
+                      className="rounded"
+                    />
+                    Try to regenerate 3D avatar too
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={repairSourceImage.isPending || !repairFile}
+                    className={cn(btnOutline, "text-[#9c6b54] border-[#9c6b54] hover:bg-[#9c6b54] hover:text-white disabled:opacity-50")}
+                  >
+                    {repairSourceImage.isPending ? "Repairing…" : "Repair avatar source image"}
+                  </button>
+                  {repairSuccessMsg && <p className="text-sm text-green-700">{repairSuccessMsg}</p>}
+                  {repairApiError && <p className="text-sm text-red-600">{repairApiError}</p>}
+                </form>
               </div>
             )}
 

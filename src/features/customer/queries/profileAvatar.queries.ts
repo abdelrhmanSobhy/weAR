@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addressesApi, avatarApi, profileApi } from "@/features/customer/api/profileAvatar.api";
 import { useAuthStore } from "@/features/auth/useAuthStore";
 import { selectCustomerId } from "@/features/customer/utils/customerSelectors";
-import type { BodyMeasurements, ChangeCustomerPasswordPayload, CustomerAddressPayload, DeleteCustomerAccountPayload, ExtractAvatarFromImageInput, UpdateCustomerProfilePayload } from "@/features/customer/types/profileAvatar";
+import type { BodyMeasurements, ChangeCustomerPasswordPayload, CustomerAddressPayload, DeleteCustomerAccountPayload, ExtractAvatarFromImageInput, RepairAvatarSourceImageInput, UpdateCustomerProfilePayload } from "@/features/customer/types/profileAvatar";
 
 export const customerProfileKeys = {
   all: ["customer", "profile"] as const,
@@ -154,13 +154,10 @@ export const useRepairAvatarSourceImage = () => {
   const { customerId, requireCustomerId } = useRequiredCustomerId();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const active = queryClient.getQueryData<{ id: string } | null>(customerAvatarKeys.detail(customerId));
-      if (!active?.id) throw new Error("Active avatar is required");
-      return avatarApi.repairSourceImage(requireCustomerId(), active.id);
-    },
+    mutationFn: (input: RepairAvatarSourceImageInput) => avatarApi.repairSourceImage(requireCustomerId(), input),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: customerAvatarKeys.detail(customerId) });
+      await queryClient.invalidateQueries({ queryKey: customerAvatarKeys.history(customerId) });
       await queryClient.refetchQueries({ queryKey: customerAvatarKeys.detail(customerId) });
     },
   });

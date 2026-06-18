@@ -1,3 +1,4 @@
+import type React from "react";
 import axios from "axios";
 import { ArrowLeft, RefreshCcw, Shirt, ShoppingBag, Sparkles } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useReducer, useRef, useState } from "react";
@@ -14,6 +15,7 @@ import { TRY_ON_SESSION_TYPES, canUse2DTryOn, canUse3DTryOn, initialTryOnFlowSta
 import { useRepairAvatarSourceImage } from "@/features/customer/queries/profileAvatar.queries";
 import { getSafeActiveAvatarModelUrl, toSafeModelUrl } from "@/features/customer/try-on/utils/modelUrl";
 import { appendReturnToCustomerRoute } from "@/features/customer/utils/customerReturnRoute";
+import { validateAvatarImageFile } from "@/features/customer/types/profileAvatar";
 import { cn } from "@/lib/utils";
 
 type TryOnMode = "3d" | "2d";
@@ -119,6 +121,11 @@ export function CustomerTryOnPage() {
   const product = useCustomerProduct(state.productId);
   const createSession = useCreateTryOnSession();
   const repairSourceImage = useRepairAvatarSourceImage();
+  const [repairFile, setRepairFile] = useState<File | null>(null);
+  const [repairRetry3D, setRepairRetry3D] = useState(true);
+  const [repairFileError, setRepairFileError] = useState<string | null>(null);
+  const [repairApiError, setRepairApiError] = useState<string | null>(null);
+  const [repairSuccessMsg, setRepairSuccessMsg] = useState<string | null>(null);
   const inFlight = useRef(false);
   const [stageIndex, setStageIndex] = useReducer(
     (value: number) => (value + 1) % stagedMessages3d.length,
@@ -691,17 +698,60 @@ export function CustomerTryOnPage() {
                 </div>
               )}
               {avatar.data && !avatar.data.sourceImageUrl && !avatar.data.has2DCapability && (
-                <button
-                  type="button"
-                  disabled={repairSourceImage.isPending}
-                  onClick={() => repairSourceImage.mutate()}
-                  className={cn(
-                    "mt-2 rounded-lg border border-[#9c6b54] px-3 py-1 text-[12px] font-medium text-[#9c6b54] hover:bg-[#9c6b54] hover:text-white transition-colors disabled:opacity-50",
-                    customerTheme.focusRing,
-                  )}
+                <form
+                  onSubmit={(e: React.FormEvent) => {
+                    e.preventDefault();
+                    if (!repairFile) { setRepairFileError("Choose a JPEG or PNG front-view image."); return; }
+                    setRepairApiError(null); setRepairSuccessMsg(null);
+                    repairSourceImage.mutate(
+                      { frontImageFile: repairFile, retryGenerate3D: repairRetry3D },
+                      {
+                        onSuccess: (updated) => {
+                          setRepairFile(null);
+                          if (updated.has2DCapability && updated.has3DCapability) setRepairSuccessMsg("2D try-on is now available. 3D try-on is now available too.");
+                          else if (updated.has2DCapability) setRepairSuccessMsg("2D try-on is available. 3D is still unavailable, but you can use 2D now.");
+                          else setRepairSuccessMsg("Repair complete.");
+                        },
+                        onError: (err) => {
+                          const code = axios.isAxiosError(err) ? (err.response?.data?.code ?? err.response?.data?.Code) : null;
+                          if (code === "AvatarSourceImageAlreadyExists") { setRepairSuccessMsg("This avatar already has a source image. No repair is needed."); avatar.refetch(); }
+                          else if (code === "INVALID_FILE_TYPE") setRepairApiError("Please upload a JPEG or PNG image.");
+                          else if (axios.isAxiosError(err) && err.response?.status === 404) setRepairApiError("No avatar was found. Please create an avatar first.");
+                          else { const msg = axios.isAxiosError(err) ? (err.response?.data?.message ?? null) : null; setRepairApiError(typeof msg === "string" && msg.trim() ? msg : "Repair failed. Please try again."); }
+                        },
+                      },
+                    );
+                  }}
+                  className="mt-2 space-y-2"
                 >
-                  {repairSourceImage.isPending ? "Repairing…" : "Repair avatar source image"}
-                </button>
+                  <p className="text-[11px] text-[#6F625B]">Upload your front-view photo again to activate 2D try-on without losing your measurements.</p>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const f = e.target.files?.[0] ?? null;
+                      setRepairFileError(null); setRepairApiError(null); setRepairSuccessMsg(null);
+                      if (!f) { setRepairFile(null); return; }
+                      try { validateAvatarImageFile(f); setRepairFile(f); } catch (err) { setRepairFile(null); setRepairFileError(err instanceof Error ? err.message : "Invalid file"); }
+                    }}
+                    className="block w-full text-[11px] text-[#6F625B] file:mr-2 file:rounded file:border-0 file:bg-[#9c6b54] file:px-2 file:py-1 file:text-[10px] file:text-white"
+                  />
+                  {repairFile && <p className="text-[10px] text-[#6F625B]">{repairFile.name}</p>}
+                  {repairFileError && <p className="text-[10px] text-red-600">{repairFileError}</p>}
+                  <label className="flex items-center gap-1.5 text-[11px] text-[#2F2925]">
+                    <input type="checkbox" checked={repairRetry3D} onChange={(e) => setRepairRetry3D(e.target.checked)} className="rounded" />
+                    Try to regenerate 3D avatar too
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={repairSourceImage.isPending || !repairFile}
+                    className={cn("rounded-lg border border-[#9c6b54] px-3 py-1 text-[11px] font-medium text-[#9c6b54] hover:bg-[#9c6b54] hover:text-white transition-colors disabled:opacity-50", customerTheme.focusRing)}
+                  >
+                    {repairSourceImage.isPending ? "Repairing…" : "Repair avatar source image"}
+                  </button>
+                  {repairSuccessMsg && <p className="text-[11px] text-green-700">{repairSuccessMsg}</p>}
+                  {repairApiError && <p className="text-[11px] text-red-600">{repairApiError}</p>}
+                </form>
               )}
             </div>
 

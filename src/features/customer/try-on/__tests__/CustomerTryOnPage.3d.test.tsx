@@ -44,6 +44,7 @@ vi.mock("@/features/customer/queries/profileAvatar.queries", () => ({
   useCustomerAvatar: () => ({
     isLoading: false,
     isError: false,
+    refetch: vi.fn(),
     data: {
       id: "a1",
       avatar3dModelUrl:
@@ -384,7 +385,7 @@ describe("CustomerTryOnPage 3D backend result", () => {
     expect(screen.getByText("3D unavailable")).toBeInTheDocument();
   });
 
-  it("shows repair avatar source image button when avatar has no 2D capability or sourceImageUrl", async () => {
+  it("shows repair form when avatar has no 2D capability or sourceImageUrl", async () => {
     (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl =
       "https://cdn.example.test/avatar.glb";
     /* has3DCapability true, has2DCapability false, no sourceImageUrl */
@@ -394,6 +395,73 @@ describe("CustomerTryOnPage 3D backend result", () => {
     await screen.findByRole("button", { name: "M" });
 
     expect(screen.getByRole("button", { name: /Repair avatar source image/i })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /Try to regenerate 3D avatar too/i })).toBeInTheDocument();
+    /* button is disabled until a file is selected */
+    expect(screen.getByRole("button", { name: /Repair avatar source image/i })).toBeDisabled();
+  });
+
+  it("repair form does not appear when avatar has 2D capability", async () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl =
+      "https://cdn.example.test/avatar.glb";
+    (globalThis as { activeHas2DCapability?: boolean }).activeHas2DCapability = true;
+
+    renderTryOnPage("/customer/try-on/p1");
+    fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
+    await screen.findByRole("button", { name: "M" });
+
+    expect(screen.queryByRole("button", { name: /Repair avatar source image/i })).not.toBeInTheDocument();
+  });
+
+  it("successful repair shows 2D readiness message when has2DCapability becomes true", async () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl =
+      "https://cdn.example.test/avatar.glb";
+    /* has2DCapability false initially */
+
+    const repairedAvatar = {
+      id: "a1", customerId: "c1", heightCm: 175, avatar3dModelUrl: null,
+      sourceImageUrl: "https://cdn.example.test/source.jpg",
+      has2DCapability: true, has3DCapability: false, measurements: { heightCm: 170 },
+    };
+    repairMutate.mockImplementation((_input, opts) => opts?.onSuccess(repairedAvatar));
+
+    renderTryOnPage("/customer/try-on/p1");
+    fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
+    await screen.findByRole("button", { name: "M" });
+
+    const fileInput = screen.getByLabelText ? undefined : screen.getAllByRole("textbox")[0];
+    void fileInput;
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File(["data"], "front.jpg", { type: "image/jpeg" });
+    Object.defineProperty(input, "files", { value: [file] });
+    fireEvent.change(input);
+
+    fireEvent.click(screen.getByRole("button", { name: /Repair avatar source image/i }));
+
+    expect(await screen.findByText(/2D try-on is available/i)).toBeInTheDocument();
+  });
+
+  it("repair shows 'already has source image' message on 422 AvatarSourceImageAlreadyExists", async () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl =
+      "https://cdn.example.test/avatar.glb";
+
+    const alreadyExistsError = Object.assign(new Error("Conflict"), {
+      isAxiosError: true,
+      response: { status: 422, data: { code: "AvatarSourceImageAlreadyExists", message: "Already exists." } },
+    });
+    repairMutate.mockImplementation((_input, opts) => opts?.onError(alreadyExistsError));
+
+    renderTryOnPage("/customer/try-on/p1");
+    fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
+    await screen.findByRole("button", { name: "M" });
+
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File(["data"], "front.jpg", { type: "image/jpeg" });
+    Object.defineProperty(input, "files", { value: [file] });
+    fireEvent.change(input);
+
+    fireEvent.click(screen.getByRole("button", { name: /Repair avatar source image/i }));
+
+    expect(await screen.findByText(/already has a source image/i)).toBeInTheDocument();
   });
 
   it("EXTERNAL_SERVICE_ERROR shows friendly message and error code in error panel", async () => {

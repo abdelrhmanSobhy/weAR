@@ -130,6 +130,11 @@ export interface ExtractAvatarFromImageInput {
   heightCm: number;
 }
 
+export interface RepairAvatarSourceImageInput {
+  frontImageFile: File;
+  retryGenerate3D?: boolean;
+}
+
 export const MAX_AVATAR_IMAGE_BYTES = 10 * 1024 * 1024;
 export const AVATAR_IMAGE_TYPES = ["image/jpeg", "image/png"] as const;
 

@@ -165,7 +165,7 @@ describe("avatarApi normalization", () => {
     expect((opts as { timeout: number }).timeout).toBe(240_000);
   });
 
-  it("repairSourceImage calls the repair endpoint with avatarId", async () => {
+  it("repairSourceImage sends multipart/form-data with FrontImageFile and RetryGenerate3D (PascalCase)", async () => {
     mockPost.mockResolvedValue({
       data: {
         id: "av1",
@@ -177,12 +177,36 @@ describe("avatarApi normalization", () => {
         has3DCapability: false,
       },
     });
-    const result = await avatarApi.repairSourceImage("c1", "av1");
-    expect(mockPost).toHaveBeenCalledWith(
-      "/api/customers/c1/avatar/repair-source-image",
-      { avatarId: "av1" },
-    );
-    expect(result?.sourceImageUrl).toBe("https://cdn.example.test/repaired.jpg");
-    expect(result?.has2DCapability).toBe(true);
+    const frontFile = new File(["data"], "front.jpg", { type: "image/jpeg" });
+    const result = await avatarApi.repairSourceImage("c1", { frontImageFile: frontFile, retryGenerate3D: true });
+
+    const [url, body] = mockPost.mock.calls[0] as [string, unknown, unknown];
+    expect(url).toBe("/api/customers/c1/avatar/repair-source-image");
+    expect(body).toBeInstanceOf(FormData);
+    expect((body as FormData).get("FrontImageFile")).toBeInstanceOf(File);
+    expect((body as FormData).get("RetryGenerate3D")).toBe("true");
+    expect(result.sourceImageUrl).toBe("https://cdn.example.test/repaired.jpg");
+    expect(result.has2DCapability).toBe(true);
+  });
+
+  it("repairSourceImage does not send avatarId", async () => {
+    mockPost.mockResolvedValue({
+      data: { id: "av1", customerId: "c1", heightCm: 175, avatar3dModelUrl: null, sourceImageUrl: "https://cdn.example.test/repaired.jpg", has2DCapability: true, has3DCapability: false },
+    });
+    const frontFile = new File(["data"], "front.jpg", { type: "image/jpeg" });
+    await avatarApi.repairSourceImage("c1", { frontImageFile: frontFile });
+    const [, body] = mockPost.mock.calls[0] as [string, FormData, unknown];
+    expect(body.get("avatarId")).toBeNull();
+    expect(body.get("AvatarId")).toBeNull();
+  });
+
+  it("repairSourceImage defaults RetryGenerate3D to true when omitted", async () => {
+    mockPost.mockResolvedValue({
+      data: { id: "av1", customerId: "c1", heightCm: 175, avatar3dModelUrl: null, sourceImageUrl: "https://cdn.example.test/repaired.jpg", has2DCapability: true, has3DCapability: false },
+    });
+    const frontFile = new File(["data"], "front.jpg", { type: "image/jpeg" });
+    await avatarApi.repairSourceImage("c1", { frontImageFile: frontFile });
+    const [, body] = mockPost.mock.calls[0] as [string, FormData, unknown];
+    expect((body as FormData).get("RetryGenerate3D")).toBe("true");
   });
 });

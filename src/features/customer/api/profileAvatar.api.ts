@@ -2,7 +2,7 @@ import axios from "axios";
 import { apiClient } from "@/lib/axios";
 import { unwrapCustomerApiData } from "@/features/customer/api/customerApiUtils";
 import { buildAvatarImageExtractionFormData, normalizeNullableMeasurements } from "@/features/customer/types/profileAvatar";
-import type { BodyMeasurements, ChangeCustomerPasswordPayload, CustomerAccountProfile, CustomerAddress, CustomerAddressPayload, CustomerAvatar, DeleteCustomerAccountPayload, ExtractAvatarFromImageInput, MeasurementHistoryEntry, SizeRecommendation, UpdateCustomerProfilePayload } from "@/features/customer/types/profileAvatar";
+import type { BodyMeasurements, ChangeCustomerPasswordPayload, CustomerAccountProfile, CustomerAddress, CustomerAddressPayload, CustomerAvatar, DeleteCustomerAccountPayload, ExtractAvatarFromImageInput, MeasurementHistoryEntry, RepairAvatarSourceImageInput, SizeRecommendation, UpdateCustomerProfilePayload } from "@/features/customer/types/profileAvatar";
 
 export const profileApi = {
   getProfile: async (signal?: AbortSignal) => {
@@ -340,16 +340,17 @@ export const avatarApi = {
       reason: recommendation.reason ?? recommendation.justification ?? null,
     };
   },
-  repairSourceImage: async (customerId: string, avatarId: string): Promise<CustomerAvatar | null> => {
+  repairSourceImage: async (customerId: string, input: RepairAvatarSourceImageInput): Promise<CustomerAvatar> => {
+    const formData = new FormData();
+    formData.append("FrontImageFile", input.frontImageFile);
+    formData.append("RetryGenerate3D", String(input.retryGenerate3D ?? true));
     const response = await apiClient.post(
       `/api/customers/${customerId}/avatar/repair-source-image`,
-      { avatarId },
+      formData,
+      { timeout: 120_000 },
     );
-    try {
-      const data = unwrapCustomerApiData<FlatAvatarResponse>(response.data);
-      if (data && data.id) return mapFlatAvatarToCustomerAvatar(data, customerId);
-    } catch { /* backend returned only a message; caller should refetch */ }
-    return null;
+    const data = unwrapCustomerApiData<FlatAvatarResponse>(response.data);
+    return mapFlatAvatarToCustomerAvatar(data, customerId);
   },
   extractFromImage: async (customerId: string, input: ExtractAvatarFromImageInput) => {
     const formData = buildAvatarImageExtractionFormData(input);
