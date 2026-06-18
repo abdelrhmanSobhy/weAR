@@ -27,6 +27,9 @@ const extractErrorMessage = (error: unknown): { message: string; fieldErrors?: R
     if (code === "AI_EXTRACTION_FAILED" || code === "INVALID_FILE_TYPE") {
       return { message: msg ?? "The AI model could not process the uploaded images. Please upload clear full-body front and side-view photos with plain background and form-fitting clothes.", fieldErrors };
     }
+    if (error.response?.status === 415) {
+      return { message: "Avatar extraction must be sent as multipart/form-data. Please retry after refreshing the page." };
+    }
     if (error.response?.status === 422 || error.response?.status === 400) {
       return { message: msg ?? "Validation failed. Check that both images are JPEG/PNG under 10 MB and height is valid.", fieldErrors };
     }

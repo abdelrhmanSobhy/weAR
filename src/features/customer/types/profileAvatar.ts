@@ -176,8 +176,8 @@ export const buildAvatarImageExtractionFormData = ({ frontImageFile, sideImageFi
     throw new Error("Height in centimeters is required");
   }
   const formData = new FormData();
-  formData.append("FrontImageFile", frontImageFile);
-  formData.append("SideImageFile", sideImageFile);
-  formData.append("HeightCm", String(heightCm));
+  formData.append("frontImageFile", frontImageFile);
+  formData.append("sideImageFile", sideImageFile);
+  formData.append("heightCm", String(heightCm));
   return formData;
 };

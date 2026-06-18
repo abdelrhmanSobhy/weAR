@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { buildAvatarImageExtractionFormData } from "@/features/customer/types/profileAvatar";
 
 vi.mock("@/lib/axios", () => ({
   apiClient: {
@@ -21,6 +22,41 @@ const mockPost = apiClient.post as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("buildAvatarImageExtractionFormData", () => {
+  const makeFile = (name: string) => new File(["data"], name, { type: "image/jpeg" });
+
+  it("uses camelCase backend field names (frontImageFile / sideImageFile / heightCm)", () => {
+    const fd = buildAvatarImageExtractionFormData({
+      frontImageFile: makeFile("front.jpg"),
+      sideImageFile: makeFile("side.jpg"),
+      heightCm: 175,
+    });
+    expect(fd.get("frontImageFile")).toBeInstanceOf(File);
+    expect(fd.get("sideImageFile")).toBeInstanceOf(File);
+    expect(fd.get("heightCm")).toBe("175");
+  });
+
+  it("does not contain PascalCase legacy keys", () => {
+    const fd = buildAvatarImageExtractionFormData({
+      frontImageFile: makeFile("front.jpg"),
+      sideImageFile: makeFile("side.jpg"),
+      heightCm: 175,
+    });
+    expect(fd.get("FrontImageFile")).toBeNull();
+    expect(fd.get("SideImageFile")).toBeNull();
+    expect(fd.get("HeightCm")).toBeNull();
+  });
+
+  it("returns a FormData instance, not JSON", () => {
+    const fd = buildAvatarImageExtractionFormData({
+      frontImageFile: makeFile("front.jpg"),
+      sideImageFile: makeFile("side.jpg"),
+      heightCm: 170,
+    });
+    expect(fd).toBeInstanceOf(FormData);
+  });
 });
 
 describe("avatarApi normalization", () => {
@@ -106,6 +142,27 @@ describe("avatarApi normalization", () => {
     mockGet.mockRejectedValue(err);
     const avatar = await avatarApi.getAvatar("c1");
     expect(avatar).toBeNull();
+  });
+
+  it("extractFromImage sends a FormData instance (not plain JSON)", async () => {
+    mockPost.mockResolvedValue({
+      data: {
+        id: "av1",
+        customerId: "c1",
+        heightCm: 175,
+        avatar3dModelUrl: null,
+        sourceImageUrl: "https://cdn.example.test/source.jpg",
+        has2DCapability: true,
+        has3DCapability: false,
+      },
+    });
+    const frontFile = new File(["data"], "front.jpg", { type: "image/jpeg" });
+    const sideFile = new File(["data"], "side.jpg", { type: "image/jpeg" });
+    await avatarApi.extractFromImage("c1", { frontImageFile: frontFile, sideImageFile: sideFile, heightCm: 175 });
+    const [url, body, opts] = mockPost.mock.calls[0] as [string, unknown, unknown];
+    expect(url).toBe("/api/customers/c1/avatar/extract-from-image");
+    expect(body).toBeInstanceOf(FormData);
+    expect((opts as { timeout: number }).timeout).toBe(240_000);
   });
 
   it("repairSourceImage calls the repair endpoint with avatarId", async () => {

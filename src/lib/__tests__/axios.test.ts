@@ -72,3 +72,46 @@ describe("role-aware refresh routing", () => {
     expect(getLoginPathForRole("retailer")).toBe("/login/retailer");
   });
 });
+
+describe("apiClient FormData request interceptor", () => {
+  it("removes Content-Type for FormData so browser sets multipart/form-data with boundary", async () => {
+    const { apiClient } = await import("@/lib/axios");
+    const formData = new FormData();
+    formData.append("frontImageFile", new File(["x"], "f.jpg", { type: "image/jpeg" }));
+
+    /* Simulate running the request interceptor by calling the fulfilled handler directly */
+    const interceptor = (apiClient.interceptors.request as unknown as {
+      handlers: Array<{ fulfilled: (c: Record<string, unknown>) => unknown }>;
+    }).handlers.at(-1);
+
+    const fakeConfig = {
+      url: "/api/customers/c1/avatar/extract-from-image",
+      data: formData,
+      headers: { "Content-Type": "application/json", Authorization: "Bearer tok" },
+    };
+
+    if (interceptor) {
+      const result = interceptor.fulfilled(fakeConfig) as typeof fakeConfig;
+      expect(result.headers["Content-Type"]).toBeUndefined();
+      expect(result.headers["Authorization"]).toBe("Bearer tok");
+    }
+  });
+
+  it("keeps Content-Type application/json for plain JSON requests", async () => {
+    const { apiClient } = await import("@/lib/axios");
+    const interceptor = (apiClient.interceptors.request as unknown as {
+      handlers: Array<{ fulfilled: (c: Record<string, unknown>) => unknown }>;
+    }).handlers.at(-1);
+
+    const fakeConfig = {
+      url: "/api/customers/c1/avatar",
+      data: { heightCm: 175 },
+      headers: { "Content-Type": "application/json" },
+    };
+
+    if (interceptor) {
+      const result = interceptor.fulfilled(fakeConfig) as typeof fakeConfig;
+      expect(result.headers["Content-Type"]).toBe("application/json");
+    }
+  });
+});

@@ -102,6 +102,11 @@ apiClient.interceptors.request.use(
       }
     }
 
+    /* Let the browser/axios set the correct multipart boundary for FormData */
+    if (config.data instanceof FormData) {
+      delete (config.headers as Record<string, string>)["Content-Type"];
+    }
+
     return config;
   },
   (error) => Promise.reject(error),
