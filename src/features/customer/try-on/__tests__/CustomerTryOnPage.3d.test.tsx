@@ -131,11 +131,26 @@ beforeEach(() => {
 
 describe("CustomerTryOnPage 3D backend result", () => {
   it("default mode is 3D — mode selector shows 3D Avatar as selected on entry screen", () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl =
+      "https://cdn.example.test/avatar.glb";
     renderTryOnPage("/customer/try-on/p1");
     const btn3d = screen.getByRole("button", { name: /3D Avatar Try-On/i });
     expect(btn3d).toHaveAttribute("aria-pressed", "true");
     const btn2d = screen.getByRole("button", { name: /2D Image Try-On/i });
     expect(btn2d).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("auto-selects 2D when 3D is unavailable but 2D is ready — no manual switch needed", () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl = null;
+    (globalThis as { activeHas2DCapability?: boolean }).activeHas2DCapability = true;
+
+    renderTryOnPage("/customer/try-on/p1");
+
+    /* even though tryOnMode state defaults to "3d", effectiveTryOnMode should be "2d" */
+    const btn2d = screen.getByRole("button", { name: /2D Image Try-On/i });
+    expect(btn2d).toHaveAttribute("aria-pressed", "true");
+    const btn3d = screen.getByRole("button", { name: /3D Avatar Try-On/i });
+    expect(btn3d).toHaveAttribute("aria-pressed", "false");
   });
 
   it("redirects to photo avatar flow when no safe 3D avatar model is available in 3D mode", async () => {

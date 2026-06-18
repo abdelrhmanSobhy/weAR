@@ -142,6 +142,9 @@ export function CustomerTryOnPage() {
   const can2D = avatar.isLoading ? true : canUse2DTryOn(avatar.data);
   const can3D = avatar.isLoading ? true : canUse3DTryOn(avatar.data) && !!safeAvatarModelUrl;
 
+  /* Auto-correct mode: if user requested 3D but it's unavailable and 2D is ready, use 2D */
+  const effectiveTryOnMode: TryOnMode = tryOnMode === "3d" && !can3D && can2D ? "2d" : tryOnMode;
+
   /* prefer resultModelUrl, fall back to resultImageUrl for backwards compat */
   const resultModelUrl =
     toSafeModelUrl(state.session?.resultModelUrl) ??
@@ -149,11 +152,11 @@ export function CustomerTryOnPage() {
 
   /* In 3D mode: show result if available, else base avatar */
   const selected3dModelUrl =
-    state.status === "completed-2d" && tryOnMode === "3d"
+    state.status === "completed-2d" && effectiveTryOnMode === "3d"
       ? resultModelUrl ?? safeAvatarModelUrl
       : safeAvatarModelUrl;
 
-  const hasTryOnModel = Boolean(resultModelUrl) && tryOnMode === "3d";
+  const hasTryOnModel = Boolean(resultModelUrl) && effectiveTryOnMode === "3d";
 
   /* 2D preview: prefer sourceImageUrl (original photo used for extraction) */
   const avatar2dPreviewUrl =
@@ -161,12 +164,12 @@ export function CustomerTryOnPage() {
 
   /* Result for 2D mode */
   const result2dImageUrl =
-    tryOnMode === "2d" && state.status === "completed-2d"
+    effectiveTryOnMode === "2d" && state.status === "completed-2d"
       ? state.session?.resultImageUrl ?? null
       : null;
 
   const result2dModelUrl =
-    tryOnMode === "2d" && state.status === "completed-2d" &&
+    effectiveTryOnMode === "2d" && state.status === "completed-2d" &&
     (state.session?.resultType === "Model3D" || (!state.session?.resultImageUrl && state.session?.resultModelUrl))
       ? state.session?.resultModelUrl ?? null
       : null;
@@ -187,10 +190,10 @@ export function CustomerTryOnPage() {
       return;
     }
 
-    if (tryOnMode === "3d") {
+    if (effectiveTryOnMode === "3d") {
       if (!canUse3DTryOn(avatar.data) || !safeAvatarModelUrl) {
         if (canUse2DTryOn(avatar.data)) {
-          /* 3D unavailable but 2D is ready — enter room anyway; UI will guide user to switch */
+          /* effectiveTryOnMode should have already corrected this; guard for edge cases */
           dispatch({ type: "AVATAR_READY", productId: state.productId });
           return;
         }
@@ -211,7 +214,7 @@ export function CustomerTryOnPage() {
         return;
       }
     } else {
-      /* 2D mode: requires 2D capability (sourceImageUrl or avatar image) */
+      /* 2D mode (effective): requires 2D capability */
       if (!avatar.data) {
         dispatch({
           type: "AVATAR_MISSING",
@@ -237,11 +240,11 @@ export function CustomerTryOnPage() {
     avatar.isError,
     avatar.isLoading,
     avatarPhotoRoute,
+    effectiveTryOnMode,
     navigate,
     safeAvatarModelUrl,
     state.productId,
     state.status,
-    tryOnMode,
   ]);
 
   const colors = product.data?.colors ?? [];
@@ -251,7 +254,7 @@ export function CustomerTryOnPage() {
     (!colors.length || !!state.selectedColor) &&
     (!sizes.length || !!state.selectedSize) &&
     !!state.productId &&
-    (tryOnMode === "2d" ? canUse2DTryOn(avatar.data) : canUse3DTryOn(avatar.data) && !!safeAvatarModelUrl);
+    (effectiveTryOnMode === "2d" ? canUse2DTryOn(avatar.data) : canUse3DTryOn(avatar.data) && !!safeAvatarModelUrl);
 
   const submit = () => {
     if (!state.productId || !variantsValid || inFlight.current) return;
@@ -264,7 +267,7 @@ export function CustomerTryOnPage() {
       {
         productId: state.productId,
         sessionType:
-          tryOnMode === "2d"
+          effectiveTryOnMode === "2d"
             ? TRY_ON_SESSION_TYPES.overlay2D
             : TRY_ON_SESSION_TYPES.model3D,
         avatarId: avatar.data?.id ?? null,
@@ -298,7 +301,7 @@ export function CustomerTryOnPage() {
     setViewerRetryKey((v) => v + 1);
   };
 
-  const stagedMessages = tryOnMode === "2d" ? stagedMessages2d : stagedMessages3d;
+  const stagedMessages = effectiveTryOnMode === "2d" ? stagedMessages2d : stagedMessages3d;
 
   /* ─────────────────────────────────────────────────────────────────────
      Entry state — fitting-room curtain aesthetic
@@ -388,13 +391,13 @@ export function CustomerTryOnPage() {
             >
               <button
                 type="button"
-                aria-pressed={tryOnMode === "3d"}
+                aria-pressed={effectiveTryOnMode === "3d"}
                 disabled={!can3D}
                 title={!can3D ? "Your avatar does not have a 3D model yet" : undefined}
                 onClick={() => setTryOnMode("3d")}
                 className={cn(
                   "rounded-full px-5 py-2 text-[13px] font-semibold transition-colors disabled:opacity-50",
-                  tryOnMode === "3d"
+                  effectiveTryOnMode === "3d"
                     ? "bg-white text-[#6b3120]"
                     : "text-white/80 hover:text-white",
                   customerTheme.focusRing,
@@ -404,13 +407,13 @@ export function CustomerTryOnPage() {
               </button>
               <button
                 type="button"
-                aria-pressed={tryOnMode === "2d"}
+                aria-pressed={effectiveTryOnMode === "2d"}
                 disabled={!can2D}
                 title={!can2D ? "Your avatar does not have a source image for 2D try-on" : undefined}
                 onClick={() => setTryOnMode("2d")}
                 className={cn(
                   "rounded-full px-5 py-2 text-[13px] font-semibold transition-colors disabled:opacity-50",
-                  tryOnMode === "2d"
+                  effectiveTryOnMode === "2d"
                     ? "bg-white text-[#6b3120]"
                     : "text-white/80 hover:text-white",
                   customerTheme.focusRing,
@@ -481,18 +484,18 @@ export function CustomerTryOnPage() {
         >
           <button
             type="button"
-            aria-pressed={tryOnMode === "3d"}
+            aria-pressed={effectiveTryOnMode === "3d"}
             disabled={!can3D}
             title={!can3D ? "Your avatar does not have a 3D model yet" : undefined}
             onClick={() => {
-              if (tryOnMode !== "3d") {
+              if (effectiveTryOnMode !== "3d") {
                 setTryOnMode("3d");
                 dispatch({ type: "RESET_ENTRY" });
               }
             }}
             className={cn(
               "rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors disabled:opacity-50",
-              tryOnMode === "3d"
+              effectiveTryOnMode === "3d"
                 ? "bg-[#9c6b54] text-white"
                 : "text-[#6F625B] hover:text-[#9c6b54]",
               customerTheme.focusRing,
@@ -502,18 +505,18 @@ export function CustomerTryOnPage() {
           </button>
           <button
             type="button"
-            aria-pressed={tryOnMode === "2d"}
+            aria-pressed={effectiveTryOnMode === "2d"}
             disabled={!can2D}
             title={!can2D ? "Your avatar does not have a source image for 2D try-on" : undefined}
             onClick={() => {
-              if (tryOnMode !== "2d") {
+              if (effectiveTryOnMode !== "2d") {
                 setTryOnMode("2d");
                 dispatch({ type: "RESET_ENTRY" });
               }
             }}
             className={cn(
               "rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors disabled:opacity-50",
-              tryOnMode === "2d"
+              effectiveTryOnMode === "2d"
                 ? "bg-[#9c6b54] text-white"
                 : "text-[#6F625B] hover:text-[#9c6b54]",
               customerTheme.focusRing,
@@ -552,7 +555,7 @@ export function CustomerTryOnPage() {
             className="flex min-h-[420px] items-stretch overflow-hidden rounded-2xl bg-white/40 backdrop-blur-sm"
             style={{ border: "1px solid rgba(156,107,84,0.15)" }}
           >
-            {tryOnMode === "3d" ? (
+            {effectiveTryOnMode === "3d" ? (
               selected3dModelUrl ? (
                 <div className="flex w-full flex-col">
                   <p className="px-4 pt-3 text-[12px] font-semibold uppercase tracking-widest text-[#9c6b54]">
@@ -832,7 +835,7 @@ export function CustomerTryOnPage() {
                   </fieldset>
                 )}
 
-                {tryOnMode === "3d" && !safeAvatarModelUrl && (
+                {effectiveTryOnMode === "3d" && !safeAvatarModelUrl && (
                   <p className="rounded-xl bg-[#fef7f0] p-3 text-[13px] text-[#9c6b54]">
                     This backend requires a photo-generated 3D avatar for try-on. Use the photo
                     avatar flow first.
@@ -850,7 +853,7 @@ export function CustomerTryOnPage() {
                   )}
                 >
                   <Sparkles className="h-4 w-4" />
-                  {tryOnMode === "2d" ? "Try Product in 2D" : "Try Product in 3D"}
+                  {effectiveTryOnMode === "2d" ? "Try Product in 2D" : "Try Product in 3D"}
                 </button>
 
                 {isCompleted && (
@@ -862,7 +865,7 @@ export function CustomerTryOnPage() {
                         {state.session.sizeRecommendation ?? state.session.recommendedSize}
                       </p>
                     )}
-                    {tryOnMode === "3d" && !hasTryOnModel && (
+                    {effectiveTryOnMode === "3d" && !hasTryOnModel && (
                       <p className="rounded-xl bg-[#fef7f0] p-3 text-[13px] text-[#9c6b54]">
                         The backend did not return a 3D result URL for this session; showing base avatar.
                       </p>
@@ -1019,10 +1022,10 @@ export function CustomerTryOnPage() {
       {state.status === "error-avatar-required" && (
         <div className="rounded-2xl border border-[#e8ddd5] bg-white p-5" role="alert">
           <h2 className={cn("font-semibold text-[#2F2925]", customerTheme.headingFont)}>
-            {tryOnMode === "3d" ? "3D avatar required" : "Avatar required"}
+            {effectiveTryOnMode === "3d" ? "3D avatar required" : "Avatar required"}
           </h2>
           <p className="mt-1 text-[14px] text-[#6F625B]">
-            {tryOnMode === "3d"
+            {effectiveTryOnMode === "3d"
               ? "Create or update your avatar from a full-body photo, then return to this fitting room."
               : "Create a customer avatar, then return to this fitting room."}
           </p>
