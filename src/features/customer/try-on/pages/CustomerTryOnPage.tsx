@@ -10,7 +10,8 @@ import { CUSTOMER_ROUTES } from "@/features/customer/routes/customerRoutes";
 import { customerTheme } from "@/features/customer/styles/customerTheme";
 import { TryOnViewerErrorBoundary } from "@/features/customer/try-on/components/TryOnViewerErrorBoundary";
 import { useCreateTryOnSession } from "@/features/customer/try-on/hooks/tryOn.queries";
-import { TRY_ON_SESSION_TYPES, initialTryOnFlowState, tryOnFlowReducer } from "@/features/customer/try-on/types/tryOn";
+import { TRY_ON_SESSION_TYPES, canUse2DTryOn, canUse3DTryOn, initialTryOnFlowState, tryOnFlowReducer } from "@/features/customer/try-on/types/tryOn";
+import { useRepairAvatarSourceImage } from "@/features/customer/queries/profileAvatar.queries";
 import { getSafeActiveAvatarModelUrl, toSafeModelUrl } from "@/features/customer/try-on/utils/modelUrl";
 import { appendReturnToCustomerRoute } from "@/features/customer/utils/customerReturnRoute";
 import { cn } from "@/lib/utils";
@@ -105,6 +106,7 @@ export function CustomerTryOnPage() {
   const avatar = useCustomerAvatar();
   const product = useCustomerProduct(state.productId);
   const createSession = useCreateTryOnSession();
+  const repairSourceImage = useRepairAvatarSourceImage();
   const inFlight = useRef(false);
   const [stageIndex, setStageIndex] = useReducer(
     (value: number) => (value + 1) % stagedMessages3d.length,
@@ -141,6 +143,12 @@ export function CustomerTryOnPage() {
       ? state.session?.resultImageUrl ?? null
       : null;
 
+  const result2dModelUrl =
+    tryOnMode === "2d" && state.status === "completed-2d" &&
+    (state.session?.resultType === "Model3D" || (!state.session?.resultImageUrl && state.session?.resultModelUrl))
+      ? state.session?.resultModelUrl ?? null
+      : null;
+
   const selectedImage = product.data ? imageFor(product.data) : null;
 
   useEffect(() => {
@@ -158,7 +166,20 @@ export function CustomerTryOnPage() {
     }
 
     if (tryOnMode === "3d") {
-      if (!avatar.data || !safeAvatarModelUrl) {
+      if (!canUse3DTryOn(avatar.data) || !safeAvatarModelUrl) {
+        if (canUse2DTryOn(avatar.data)) {
+          /* 3D unavailable but 2D is ready — enter room anyway; UI will guide user to switch */
+          dispatch({ type: "AVATAR_READY", productId: state.productId });
+          return;
+        }
+        if (!avatar.data) {
+          dispatch({
+            type: "AVATAR_MISSING",
+            message: "Create a photo-based avatar before trying on products.",
+          });
+          navigate(avatarPhotoRoute);
+          return;
+        }
         dispatch({
           type: "AVATAR_MISSING",
           message:
@@ -168,11 +189,19 @@ export function CustomerTryOnPage() {
         return;
       }
     } else {
-      /* 2D mode: only needs an avatar record, not a 3D model URL */
+      /* 2D mode: requires 2D capability (sourceImageUrl or avatar image) */
       if (!avatar.data) {
         dispatch({
           type: "AVATAR_MISSING",
           message: "A customer avatar record is required before trying on products.",
+        });
+        navigate(avatarPhotoRoute);
+        return;
+      }
+      if (!canUse2DTryOn(avatar.data)) {
+        dispatch({
+          type: "AVATAR_MISSING",
+          message: "Your avatar does not have a source image for 2D try-on. Use the repair option on the Avatar page or recreate your avatar from a photo.",
         });
         navigate(avatarPhotoRoute);
         return;
@@ -200,7 +229,7 @@ export function CustomerTryOnPage() {
     (!colors.length || !!state.selectedColor) &&
     (!sizes.length || !!state.selectedSize) &&
     !!state.productId &&
-    (tryOnMode === "2d" ? !!avatar.data : !!safeAvatarModelUrl);
+    (tryOnMode === "2d" ? canUse2DTryOn(avatar.data) : canUse3DTryOn(avatar.data) && !!safeAvatarModelUrl);
 
   const submit = () => {
     if (!state.productId || !variantsValid || inFlight.current) return;
@@ -567,7 +596,19 @@ export function CustomerTryOnPage() {
                   {isCompleted ? "2D try-on result" : "2D preview"}
                 </p>
                 <div className="flex flex-1 items-center justify-center p-4">
-                  {isCompleted && result2dImageUrl ? (
+                  {isCompleted && result2dModelUrl ? (
+                    <div className="rounded-2xl bg-white/60 p-8 text-center text-[#9c6b54]">
+                      <p className="font-medium text-[15px]">3D model result available.</p>
+                      <a
+                        href={result2dModelUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn("mt-3 inline-block text-[14px] underline hover:opacity-80", customerTheme.focusRing)}
+                      >
+                        Open 3D model
+                      </a>
+                    </div>
+                  ) : isCompleted && result2dImageUrl ? (
                     <img
                       src={result2dImageUrl}
                       alt="2D try-on result"
@@ -604,6 +645,39 @@ export function CustomerTryOnPage() {
               <p className="text-[12px] font-semibold uppercase tracking-widest text-[#9c6b54]">
                 Fitting Room
               </p>
+              {avatar.data && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <span className={cn(
+                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+                    avatar.data.has2DCapability
+                      ? "bg-green-50 text-green-700"
+                      : "bg-[#fef7f0] text-[#9c6b54]",
+                  )}>
+                    {avatar.data.has2DCapability ? "2D Ready" : "2D unavailable"}
+                  </span>
+                  <span className={cn(
+                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+                    avatar.data.has3DCapability
+                      ? "bg-green-50 text-green-700"
+                      : "bg-[#fef7f0] text-[#9c6b54]",
+                  )}>
+                    {avatar.data.has3DCapability ? "3D Ready" : "3D unavailable"}
+                  </span>
+                </div>
+              )}
+              {avatar.data && !avatar.data.sourceImageUrl && !avatar.data.has2DCapability && (
+                <button
+                  type="button"
+                  disabled={repairSourceImage.isPending}
+                  onClick={() => repairSourceImage.mutate()}
+                  className={cn(
+                    "mt-2 rounded-lg border border-[#9c6b54] px-3 py-1 text-[12px] font-medium text-[#9c6b54] hover:bg-[#9c6b54] hover:text-white transition-colors disabled:opacity-50",
+                    customerTheme.focusRing,
+                  )}
+                >
+                  {repairSourceImage.isPending ? "Repairing…" : "Repair avatar source image"}
+                </button>
+              )}
             </div>
 
             {product.isLoading && (

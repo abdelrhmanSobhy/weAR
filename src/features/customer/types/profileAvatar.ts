@@ -101,6 +101,9 @@ export interface CustomerAvatar {
   avatarFrontImageUrl?: string | null;
   avatarSideImageUrl?: string | null;
   avatar2dImageUrl?: string | null;
+  sourceImageUrl?: string | null;
+  has2DCapability: boolean;
+  has3DCapability: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

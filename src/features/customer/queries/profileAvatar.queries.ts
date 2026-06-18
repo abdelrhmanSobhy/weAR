@@ -150,6 +150,22 @@ export const useCustomerSizeRecommendation = (productId: string | null | undefin
   return useQuery({ queryKey: customerAvatarKeys.sizeRecommendation(customerId, productId), queryFn: ({ signal }) => avatarApi.getSizeRecommendation(customerId ?? "", productId ?? "", signal), enabled: !!customerId && !!productId });
 };
 
+export const useRepairAvatarSourceImage = () => {
+  const { customerId, requireCustomerId } = useRequiredCustomerId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const active = queryClient.getQueryData<{ id: string } | null>(customerAvatarKeys.detail(customerId));
+      if (!active?.id) throw new Error("Active avatar is required");
+      return avatarApi.repairSourceImage(requireCustomerId(), active.id);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: customerAvatarKeys.detail(customerId) });
+      await queryClient.refetchQueries({ queryKey: customerAvatarKeys.detail(customerId) });
+    },
+  });
+};
+
 export const useExtractCustomerAvatarFromImage = () => {
   const { customerId, requireCustomerId } = useRequiredCustomerId();
   const queryClient = useQueryClient();

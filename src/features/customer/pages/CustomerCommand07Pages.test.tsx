@@ -13,7 +13,7 @@ const mutate = vi.fn();
 const hooks = vi.hoisted(() => ({
   useCustomerProfile: vi.fn(), useUpdateCustomerProfile: vi.fn(), useChangeCustomerPassword: vi.fn(), useDeleteCustomerAccount: vi.fn(),
   useCustomerAddresses: vi.fn(), useCreateCustomerAddress: vi.fn(), useUpdateCustomerAddress: vi.fn(), useDeleteCustomerAddress: vi.fn(), useSetDefaultCustomerAddress: vi.fn(),
-  useCustomerAvatar: vi.fn(), useCustomerAvatarHistory: vi.fn(), useCreateCustomerAvatar: vi.fn(), useUpdateCustomerAvatarMeasurements: vi.fn(), useDeleteCustomerAvatar: vi.fn(), useExtractCustomerAvatarFromImage: vi.fn(),
+  useCustomerAvatar: vi.fn(), useCustomerAvatarHistory: vi.fn(), useCreateCustomerAvatar: vi.fn(), useUpdateCustomerAvatarMeasurements: vi.fn(), useDeleteCustomerAvatar: vi.fn(), useExtractCustomerAvatarFromImage: vi.fn(), useRepairAvatarSourceImage: vi.fn(),
 }));
 
 vi.mock("@/features/customer/queries/profileAvatar.queries", () => hooks);
@@ -38,6 +38,7 @@ beforeEach(() => {
   hooks.useUpdateCustomerAvatarMeasurements.mockReturnValue(idleMutation());
   hooks.useDeleteCustomerAvatar.mockReturnValue(idleMutation());
   hooks.useExtractCustomerAvatarFromImage.mockReturnValue(idleMutation());
+  hooks.useRepairAvatarSourceImage.mockReturnValue(idleMutation());
 });
 
 describe("Command 07 customer pages", () => {
@@ -79,7 +80,7 @@ describe("Command 07 customer pages", () => {
     expect(screen.getByText("No avatar yet")).toBeInTheDocument();
     hooks.useCustomerAvatar.mockReturnValue({ isLoading: false, isError: false, data: { id: "av1", customerId: "c1", avatar3dModelUrl: null, measurements: { heightCm: 170, chestCm: null } } });
     renderPage(<CustomerAvatarPage />, "/customer/avatar");
-    expect(screen.getByText(/3D model is not yet available/)).toBeInTheDocument();
+    expect(screen.getByText("3D unavailable")).toBeInTheDocument();
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 

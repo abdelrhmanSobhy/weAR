@@ -1,20 +1,32 @@
 import type { CustomerProduct } from "@/features/customer/types/catalog";
+import type { CustomerAvatar } from "@/features/customer/types/profileAvatar";
 
 export const TRY_ON_SESSION_TYPES = {
-  overlay2D: 0,
-  model3D: 1,
-  arLiveView: 2,
+  overlay2D: "Overlay2D",
+  model3D: "Model3D",
 } as const;
 
-export type TryOnSessionType = (typeof TRY_ON_SESSION_TYPES)[keyof typeof TRY_ON_SESSION_TYPES] | string;
+export type TryOnSessionType = "Overlay2D" | "Model3D" | string;
 
 export type TryOnResultType = "Image2D" | "Model3D" | string;
 
 export interface CreateTryOnSessionPayload {
   productId: string;
-  sessionType: (typeof TRY_ON_SESSION_TYPES)[keyof typeof TRY_ON_SESSION_TYPES];
+  sessionType: "Overlay2D" | "Model3D";
   avatarId?: string | null;
 }
+
+export const canUse2DTryOn = (avatar: CustomerAvatar | null | undefined): boolean =>
+  Boolean(avatar?.has2DCapability);
+
+export const canUse3DTryOn = (avatar: CustomerAvatar | null | undefined): boolean =>
+  Boolean(avatar?.has3DCapability);
+
+export const getDefaultTryOnSessionType = (avatar: CustomerAvatar | null | undefined): "Overlay2D" | "Model3D" => {
+  if (canUse2DTryOn(avatar)) return "Overlay2D";
+  if (canUse3DTryOn(avatar)) return "Model3D";
+  return "Overlay2D";
+};
 
 export interface TryOnSession {
   id: string;

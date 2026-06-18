@@ -39,6 +39,7 @@ vi.mock("@/features/customer/try-on/components/TryOn3DViewer", () => ({
   },
 }));
 
+const repairMutate = vi.fn();
 vi.mock("@/features/customer/queries/profileAvatar.queries", () => ({
   useCustomerAvatar: () => ({
     isLoading: false,
@@ -47,9 +48,15 @@ vi.mock("@/features/customer/queries/profileAvatar.queries", () => ({
       id: "a1",
       avatar3dModelUrl:
         (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl ?? null,
+      has3DCapability: Boolean(
+        (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl,
+      ),
+      has2DCapability:
+        (globalThis as { activeHas2DCapability?: boolean }).activeHas2DCapability ?? false,
       measurements: { heightCm: 170 },
     },
   }),
+  useRepairAvatarSourceImage: () => ({ isPending: false, mutate: repairMutate, isSuccess: false, isError: false }),
 }));
 
 vi.mock("@/features/customer/queries/catalog.queries", () => ({
@@ -118,6 +125,7 @@ beforeEach(() => {
   useCartStore.setState({ items: [] });
   (globalThis as { failViewer?: boolean }).failViewer = false;
   (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl = null;
+  (globalThis as { activeHas2DCapability?: boolean }).activeHas2DCapability = false;
 });
 
 describe("CustomerTryOnPage 3D backend result", () => {
@@ -227,6 +235,7 @@ describe("CustomerTryOnPage 3D backend result", () => {
   it("2D submit sends sessionType overlay2D only when user selects 2D mode", async () => {
     (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl =
       "https://cdn.example.test/avatar.glb";
+    (globalThis as { activeHas2DCapability?: boolean }).activeHas2DCapability = true;
     session = {
       id: "s1",
       productId: "p1",
@@ -259,8 +268,9 @@ describe("CustomerTryOnPage 3D backend result", () => {
   });
 
   it("2D mode does not require avatar3dModelUrl but still requires avatar record", async () => {
-    /* avatar exists but has no 3D model URL */
+    /* avatar exists but has no 3D model URL; 2D capability is present (e.g. from sourceImageUrl) */
     (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl = null;
+    (globalThis as { activeHas2DCapability?: boolean }).activeHas2DCapability = true;
 
     render(
       <MemoryRouter initialEntries={["/customer/try-on/p1"]}>
@@ -283,6 +293,7 @@ describe("CustomerTryOnPage 3D backend result", () => {
   it("2D result renders as an img element, not a 3D viewer", async () => {
     (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl =
       "https://cdn.example.test/avatar.glb";
+    (globalThis as { activeHas2DCapability?: boolean }).activeHas2DCapability = true;
     session = {
       id: "s1",
       productId: "p1",
@@ -347,5 +358,71 @@ describe("CustomerTryOnPage 3D backend result", () => {
 
     expect(await screen.findByText(/Internal processing failure/i)).toBeInTheDocument();
     expect(screen.getByTestId("error-trace-id")).toHaveTextContent("trace-abc-123");
+  });
+
+  it("enters fitting room without redirecting when 3D is unavailable but 2D is available", async () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl = null;
+    (globalThis as { activeHas2DCapability?: boolean }).activeHas2DCapability = true;
+
+    renderTryOnPage("/customer/try-on/p1");
+    /* default mode is 3D, but 3D is unavailable and 2D capability exists — should NOT redirect */
+    fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
+
+    await screen.findByRole("button", { name: "M" });
+    expect(screen.queryByText(/Photo avatar route/i)).not.toBeInTheDocument();
+  });
+
+  it("shows 2D Ready and 3D unavailable capability badges when only 2D is available", async () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl = null;
+    (globalThis as { activeHas2DCapability?: boolean }).activeHas2DCapability = true;
+
+    renderTryOnPage("/customer/try-on/p1");
+    fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
+    await screen.findByRole("button", { name: "M" });
+
+    expect(screen.getByText("2D Ready")).toBeInTheDocument();
+    expect(screen.getByText("3D unavailable")).toBeInTheDocument();
+  });
+
+  it("shows repair avatar source image button when avatar has no 2D capability or sourceImageUrl", async () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl =
+      "https://cdn.example.test/avatar.glb";
+    /* has3DCapability true, has2DCapability false, no sourceImageUrl */
+
+    renderTryOnPage("/customer/try-on/p1");
+    fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
+    await screen.findByRole("button", { name: "M" });
+
+    expect(screen.getByRole("button", { name: /Repair avatar source image/i })).toBeInTheDocument();
+  });
+
+  it("sessionType sent as string 'Overlay2D' for 2D and 'Model3D' for 3D", async () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl =
+      "https://cdn.example.test/avatar.glb";
+    (globalThis as { activeHas2DCapability?: boolean }).activeHas2DCapability = true;
+    session = { id: "s1", productId: "p1", sessionType: "Overlay2D", resultImageUrl: "https://cdn.example.test/2d.png" };
+    mutate.mockImplementation((_payload, opts) => opts.onSuccess(session));
+
+    render(
+      <MemoryRouter initialEntries={["/customer/try-on/p1"]}>
+        <Routes>
+          <Route path="/customer/try-on/:productId" element={<CustomerTryOnPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /2D Image Try-On/i }));
+    fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
+    await screen.findByRole("button", { name: "M" });
+    fireEvent.click(screen.getByRole("button", { name: "M" }));
+    fireEvent.click(screen.getByRole("button", { name: "Taupe" }));
+    fireEvent.click(screen.getByRole("button", { name: /try product in 2d/i }));
+
+    await waitFor(() =>
+      expect(mutate).toHaveBeenCalledWith(
+        { productId: "p1", sessionType: "Overlay2D", avatarId: "a1" },
+        expect.any(Object),
+      ),
+    );
   });
 });

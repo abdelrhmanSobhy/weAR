@@ -69,6 +69,9 @@ type FlatAvatarResponse = {
   avatarFrontImageUrl?: string | null;
   avatarSideImageUrl?: string | null;
   avatar2dImageUrl?: string | null;
+  sourceImageUrl?: string | null;
+  has2DCapability?: boolean;
+  has3DCapability?: boolean;
   createdAt?: string;
   updatedAt?: string;
   lastMeasuredAt?: string;
@@ -140,34 +143,46 @@ const toBackendAvatarMeasurements = (
 const mapFlatAvatarToCustomerAvatar = (
   avatar: FlatAvatarResponse,
   customerId: string,
-): CustomerAvatar => ({
-  id: avatar.id,
-  customerId: avatar.customerId ?? customerId,
-  measurements: normalizeNullableMeasurements(
-    avatar.measurements ?? {
-      heightCm: avatar.heightCm ?? null,
-      weightKg: avatar.weightKg ?? null,
-      chestCm: avatar.chestCm ?? null,
-      waistCm: avatar.waistCm ?? null,
-      hipsCm: avatar.hipsCm ?? null,
-      shoulderCm:
-        avatar.shoulderCm ??
-        avatar.shoulderWidthCm ??
-        null,
-      inseamCm: avatar.inseamCm ?? null,
-      neckCm: avatar.neckCm ?? null,
-      armLengthCm: avatar.armLengthCm ?? null,
-      shoeSizeEu: avatar.shoeSizeEu ?? null,
-      bodyShape: avatar.bodyShape ?? null,
-    },
-  ),
-  avatar3dModelUrl: avatar.avatar3dModelUrl ?? null,
-  avatarFrontImageUrl: avatar.avatarFrontImageUrl ?? null,
-  avatarSideImageUrl: avatar.avatarSideImageUrl ?? null,
-  avatar2dImageUrl: avatar.avatar2dImageUrl ?? null,
-  createdAt: avatar.createdAt,
-  updatedAt: avatar.updatedAt ?? avatar.lastMeasuredAt,
-});
+): CustomerAvatar => {
+  const sourceImageUrl = avatar.sourceImageUrl ?? null;
+  const has2DCapability =
+    avatar.has2DCapability ??
+    Boolean(sourceImageUrl || avatar.avatar2dImageUrl || avatar.avatarFrontImageUrl);
+  const has3DCapability =
+    avatar.has3DCapability ?? Boolean(avatar.avatar3dModelUrl);
+
+  return {
+    id: avatar.id,
+    customerId: avatar.customerId ?? customerId,
+    measurements: normalizeNullableMeasurements(
+      avatar.measurements ?? {
+        heightCm: avatar.heightCm ?? null,
+        weightKg: avatar.weightKg ?? null,
+        chestCm: avatar.chestCm ?? null,
+        waistCm: avatar.waistCm ?? null,
+        hipsCm: avatar.hipsCm ?? null,
+        shoulderCm:
+          avatar.shoulderCm ??
+          avatar.shoulderWidthCm ??
+          null,
+        inseamCm: avatar.inseamCm ?? null,
+        neckCm: avatar.neckCm ?? null,
+        armLengthCm: avatar.armLengthCm ?? null,
+        shoeSizeEu: avatar.shoeSizeEu ?? null,
+        bodyShape: avatar.bodyShape ?? null,
+      },
+    ),
+    avatar3dModelUrl: avatar.avatar3dModelUrl ?? null,
+    avatarFrontImageUrl: avatar.avatarFrontImageUrl ?? null,
+    avatarSideImageUrl: avatar.avatarSideImageUrl ?? null,
+    avatar2dImageUrl: avatar.avatar2dImageUrl ?? null,
+    sourceImageUrl,
+    has2DCapability,
+    has3DCapability,
+    createdAt: avatar.createdAt,
+    updatedAt: avatar.updatedAt ?? avatar.lastMeasuredAt,
+  };
+};
 
 const parseHistoryMeasurements = (
   value?: string | null,
@@ -324,6 +339,17 @@ export const avatarApi = {
       confidence: recommendation.confidence ?? recommendation.confidenceScore ?? null,
       reason: recommendation.reason ?? recommendation.justification ?? null,
     };
+  },
+  repairSourceImage: async (customerId: string, avatarId: string): Promise<CustomerAvatar | null> => {
+    const response = await apiClient.post(
+      `/api/customers/${customerId}/avatar/repair-source-image`,
+      { avatarId },
+    );
+    try {
+      const data = unwrapCustomerApiData<FlatAvatarResponse>(response.data);
+      if (data && data.id) return mapFlatAvatarToCustomerAvatar(data, customerId);
+    } catch { /* backend returned only a message; caller should refetch */ }
+    return null;
   },
   extractFromImage: async (customerId: string, input: ExtractAvatarFromImageInput) => {
     const formData = buildAvatarImageExtractionFormData(input);

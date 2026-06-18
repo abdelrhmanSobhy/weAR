@@ -9,6 +9,7 @@ import {
   useCustomerAvatar,
   // useCustomerAvatarHistory, // temporarily disabled
   useDeleteCustomerAvatar,
+  useRepairAvatarSourceImage,
 } from "@/features/customer/queries/profileAvatar.queries";
 import { CUSTOMER_ROUTES } from "@/features/customer/routes/customerRoutes";
 import { customerTheme } from "@/features/customer/styles/customerTheme";
@@ -33,6 +34,7 @@ export function CustomerAvatarPage() {
   const avatar = useCustomerAvatar();
   // const history = useCustomerAvatarHistory(); // temporarily disabled
   const deleteAvatar = useDeleteCustomerAvatar();
+  const repairSourceImage = useRepairAvatarSourceImage();
 
   if (avatar.isLoading) return <InlineState title="Loading avatar" />;
   if (avatar.isError) return <InlineState tone="error" title="Could not load avatar" />;
@@ -83,11 +85,20 @@ export function CustomerAvatarPage() {
             <h2 className={cn("mb-1 text-lg font-normal", customerTheme.headingFont, customerTheme.darkText)}>
               Active avatar
             </h2>
-            <p className={cn("mb-5 text-sm", customerTheme.mutedText)}>
-              {safeModelUrl
-                ? "3D model is available."
-                : "Measurements are saved. A 3D model is not yet available — size recommendations still work."}
-            </p>
+            <div className="mb-4 flex flex-wrap gap-2">
+              <span className={cn(
+                "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",
+                active.has2DCapability ? "bg-green-50 text-green-700" : "bg-[#fef7f0] text-[#9c6b54]",
+              )}>
+                {active.has2DCapability ? "2D Ready" : "2D unavailable"}
+              </span>
+              <span className={cn(
+                "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",
+                active.has3DCapability ? "bg-green-50 text-green-700" : "bg-[#fef7f0] text-[#9c6b54]",
+              )}>
+                {active.has3DCapability ? "3D Ready" : "3D unavailable"}
+              </span>
+            </div>
 
             <AvatarMeasurementGrid measurements={active.measurements} />
 
@@ -118,6 +129,27 @@ export function CustomerAvatarPage() {
               <p className="mt-4 rounded-2xl bg-[#fef7f0] p-3 text-sm text-[#6F625B]">
                 For 3D try-on, recreate your avatar using a full-body photo.
               </p>
+            )}
+            {!active.has2DCapability && !active.sourceImageUrl && (
+              <div className="mt-4 rounded-2xl bg-[#fef7f0] p-4">
+                <p className="text-sm text-[#6F625B]">
+                  This avatar is missing a source image needed for 2D try-on.
+                </p>
+                <button
+                  type="button"
+                  disabled={repairSourceImage.isPending}
+                  onClick={() => repairSourceImage.mutate()}
+                  className={cn(btnOutline, "mt-3 text-[#9c6b54] border-[#9c6b54] hover:bg-[#9c6b54] hover:text-white")}
+                >
+                  {repairSourceImage.isPending ? "Repairing…" : "Repair source image"}
+                </button>
+                {repairSourceImage.isSuccess && (
+                  <p className="mt-2 text-sm text-green-700">Repair complete. Avatar updated.</p>
+                )}
+                {repairSourceImage.isError && (
+                  <p className="mt-2 text-sm text-red-600">Repair failed. Please try again or recreate the avatar.</p>
+                )}
+              </div>
             )}
 
             <div className="mt-5 flex flex-wrap gap-3">
