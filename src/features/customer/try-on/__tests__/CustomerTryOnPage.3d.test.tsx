@@ -396,6 +396,60 @@ describe("CustomerTryOnPage 3D backend result", () => {
     expect(screen.getByRole("button", { name: /Repair avatar source image/i })).toBeInTheDocument();
   });
 
+  it("EXTERNAL_SERVICE_ERROR shows friendly message and error code in error panel", async () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl =
+      "https://cdn.example.test/avatar.glb";
+
+    const axiosError = Object.assign(new Error("External service error"), {
+      isAxiosError: true,
+      response: {
+        status: 502,
+        data: {
+          code: "EXTERNAL_SERVICE_ERROR",
+          message: "External service 'FalAi' is unavailable.",
+          traceId: "0HNMD085NMGNK:00000005",
+        },
+      },
+    });
+    mutate.mockImplementation((_payload, opts) => opts.onError(axiosError));
+
+    renderTryOnPage("/customer/try-on/p1");
+    fireEvent.click(screen.getByRole("button", { name: /enter room/i }));
+    await screen.findByRole("button", { name: "M" });
+    fireEvent.click(screen.getByRole("button", { name: "M" }));
+    fireEvent.click(screen.getByRole("button", { name: "Taupe" }));
+    fireEvent.click(screen.getByRole("button", { name: /try product in 3d/i }));
+
+    expect(await screen.findByText(/try-on service is temporarily unavailable/i)).toBeInTheDocument();
+    expect(screen.getByTestId("error-code")).toHaveTextContent("EXTERNAL_SERVICE_ERROR");
+    expect(screen.getByTestId("error-trace-id")).toHaveTextContent("0HNMD085NMGNK:00000005");
+  });
+
+  it("3D mode button is disabled when avatar has no 3D capability", () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl = null;
+    (globalThis as { activeHas2DCapability?: boolean }).activeHas2DCapability = true;
+
+    renderTryOnPage("/customer/try-on/p1");
+
+    const btn3d = screen.getByRole("button", { name: /3D Avatar Try-On/i });
+    expect(btn3d).toBeDisabled();
+    const btn2d = screen.getByRole("button", { name: /2D Image Try-On/i });
+    expect(btn2d).not.toBeDisabled();
+  });
+
+  it("2D mode button is disabled when avatar has no 2D capability", () => {
+    (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl =
+      "https://cdn.example.test/avatar.glb";
+    (globalThis as { activeHas2DCapability?: boolean }).activeHas2DCapability = false;
+
+    renderTryOnPage("/customer/try-on/p1");
+
+    const btn2d = screen.getByRole("button", { name: /2D Image Try-On/i });
+    expect(btn2d).toBeDisabled();
+    const btn3d = screen.getByRole("button", { name: /3D Avatar Try-On/i });
+    expect(btn3d).not.toBeDisabled();
+  });
+
   it("sessionType sent as string 'Overlay2D' for 2D and 'Model3D' for 3D", async () => {
     (globalThis as { activeAvatarModelUrl?: string | null }).activeAvatarModelUrl =
       "https://cdn.example.test/avatar.glb";

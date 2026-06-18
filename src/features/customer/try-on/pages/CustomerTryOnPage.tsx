@@ -34,11 +34,23 @@ const imageFor = (product: {
   product.images?.[0]?.url ??
   null;
 
+const extractErrorCode = (error: unknown): string | null => {
+  if (axios.isAxiosError(error)) {
+    const code = error.response?.data?.code ?? error.response?.data?.Code;
+    return typeof code === "string" && code.trim() ? code : null;
+  }
+  return null;
+};
+
 const extractErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
+    const code = error.response?.data?.code ?? error.response?.data?.Code;
     const backendMessage =
       error.response?.data?.message ?? error.response?.data?.error?.message;
+    if (code === "EXTERNAL_SERVICE_ERROR") {
+      return "The try-on service is temporarily unavailable. Please try again shortly.";
+    }
     if (typeof backendMessage === "string" && backendMessage.trim()) return backendMessage;
     if (status === 401) return "Your session expired. Please sign in again to continue.";
     if (status === 403) return "This try-on is not available for the signed-in customer.";
@@ -115,10 +127,13 @@ export function CustomerTryOnPage() {
   const [viewerStatus, setViewerStatus] = useState<ViewerStatus>("idle");
   const [viewerRetryKey, setViewerRetryKey] = useState(0);
   const [errorTraceId, setErrorTraceId] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const addToCart = useCartStore((store) => store.addItem);
   const [tryOnCartMessage, setTryOnCartMessage] = useState<string | null>(null);
 
   const safeAvatarModelUrl = getSafeActiveAvatarModelUrl(avatar.data);
+  const can2D = avatar.isLoading ? true : canUse2DTryOn(avatar.data);
+  const can3D = avatar.isLoading ? true : canUse3DTryOn(avatar.data) && !!safeAvatarModelUrl;
 
   /* prefer resultModelUrl, fall back to resultImageUrl for backwards compat */
   const resultModelUrl =
@@ -133,9 +148,9 @@ export function CustomerTryOnPage() {
 
   const hasTryOnModel = Boolean(resultModelUrl) && tryOnMode === "3d";
 
-  /* 2D preview: backend may supply these fields */
+  /* 2D preview: prefer sourceImageUrl (original photo used for extraction) */
   const avatar2dPreviewUrl =
-    avatar.data?.avatar2dImageUrl ?? avatar.data?.avatarFrontImageUrl ?? null;
+    avatar.data?.sourceImageUrl ?? avatar.data?.avatar2dImageUrl ?? avatar.data?.avatarFrontImageUrl ?? null;
 
   /* Result for 2D mode */
   const result2dImageUrl =
@@ -237,6 +252,7 @@ export function CustomerTryOnPage() {
     setErrorTraceId(null);
     dispatch({ type: "SUBMIT" });
     dispatch({ type: "PROCESSING" });
+    setErrorCode(null);
     createSession.mutate(
       {
         productId: state.productId,
@@ -255,6 +271,7 @@ export function CustomerTryOnPage() {
         onError: (error) => {
           inFlight.current = false;
           setErrorTraceId(extractTraceId(error));
+          setErrorCode(extractErrorCode(error));
           dispatch({ type: "RETRYABLE_ERROR", message: extractErrorMessage(error) });
         },
       },
@@ -365,9 +382,11 @@ export function CustomerTryOnPage() {
               <button
                 type="button"
                 aria-pressed={tryOnMode === "3d"}
+                disabled={!can3D}
+                title={!can3D ? "Your avatar does not have a 3D model yet" : undefined}
                 onClick={() => setTryOnMode("3d")}
                 className={cn(
-                  "rounded-full px-5 py-2 text-[13px] font-semibold transition-colors",
+                  "rounded-full px-5 py-2 text-[13px] font-semibold transition-colors disabled:opacity-50",
                   tryOnMode === "3d"
                     ? "bg-white text-[#6b3120]"
                     : "text-white/80 hover:text-white",
@@ -379,9 +398,11 @@ export function CustomerTryOnPage() {
               <button
                 type="button"
                 aria-pressed={tryOnMode === "2d"}
+                disabled={!can2D}
+                title={!can2D ? "Your avatar does not have a source image for 2D try-on" : undefined}
                 onClick={() => setTryOnMode("2d")}
                 className={cn(
-                  "rounded-full px-5 py-2 text-[13px] font-semibold transition-colors",
+                  "rounded-full px-5 py-2 text-[13px] font-semibold transition-colors disabled:opacity-50",
                   tryOnMode === "2d"
                     ? "bg-white text-[#6b3120]"
                     : "text-white/80 hover:text-white",
@@ -454,6 +475,8 @@ export function CustomerTryOnPage() {
           <button
             type="button"
             aria-pressed={tryOnMode === "3d"}
+            disabled={!can3D}
+            title={!can3D ? "Your avatar does not have a 3D model yet" : undefined}
             onClick={() => {
               if (tryOnMode !== "3d") {
                 setTryOnMode("3d");
@@ -461,7 +484,7 @@ export function CustomerTryOnPage() {
               }
             }}
             className={cn(
-              "rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors",
+              "rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors disabled:opacity-50",
               tryOnMode === "3d"
                 ? "bg-[#9c6b54] text-white"
                 : "text-[#6F625B] hover:text-[#9c6b54]",
@@ -473,6 +496,8 @@ export function CustomerTryOnPage() {
           <button
             type="button"
             aria-pressed={tryOnMode === "2d"}
+            disabled={!can2D}
+            title={!can2D ? "Your avatar does not have a source image for 2D try-on" : undefined}
             onClick={() => {
               if (tryOnMode !== "2d") {
                 setTryOnMode("2d");
@@ -480,7 +505,7 @@ export function CustomerTryOnPage() {
               }
             }}
             className={cn(
-              "rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors",
+              "rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors disabled:opacity-50",
               tryOnMode === "2d"
                 ? "bg-[#9c6b54] text-white"
                 : "text-[#6F625B] hover:text-[#9c6b54]",
@@ -919,9 +944,11 @@ export function CustomerTryOnPage() {
             Try-on needs another attempt
           </h2>
           <p className="mt-1 text-[14px] text-[#6F625B]">{state.errorMessage}</p>
-          {errorTraceId && (
+          {(errorCode || errorTraceId) && (
             <p className="mt-1 font-mono text-[12px] text-[#9c6b54]">
-              Reference: <span data-testid="error-trace-id">{errorTraceId}</span>
+              {errorCode && <span data-testid="error-code">{errorCode}</span>}
+              {errorCode && errorTraceId && " · "}
+              {errorTraceId && <>Reference: <span data-testid="error-trace-id">{errorTraceId}</span></>}
             </p>
           )}
           <button
