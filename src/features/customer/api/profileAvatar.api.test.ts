@@ -199,9 +199,9 @@ describe("profile, addresses and avatar API adapters", () => {
       { timeout: 240_000 },
     );
     const sentFormData = mockedApiClient.post.mock.calls[0][1] as FormData;
-    expect(sentFormData.get("FrontImageFile")).toBe(frontFile);
-    expect(sentFormData.get("SideImageFile")).toBe(sideFile);
+    expect(sentFormData.get("frontImageFile")).toBe(frontFile);
+    expect(sentFormData.get("sideImageFile")).toBe(sideFile);
     expect(sentFormData.get("ImageFile")).toBeNull();
-    expect(sentFormData.get("HeightCm")).toBe("168");
+    expect(sentFormData.get("heightCm")).toBe("168");
   });
 });
