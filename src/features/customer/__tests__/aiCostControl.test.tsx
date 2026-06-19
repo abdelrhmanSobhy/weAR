@@ -19,7 +19,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import axios from "axios";
 import { CustomerAvatarPhotoPage } from "@/features/customer/pages/CustomerAvatarPhotoPage";
 import { CustomerTryOnPage } from "@/features/customer/try-on/pages/CustomerTryOnPage";
-import { TRY_ON_SESSION_TYPES } from "@/features/customer/try-on/types/tryOn";
+import { TRY_ON_SESSION_TYPES, canUse2DTryOn } from "@/features/customer/try-on/types/tryOn";
 import { useCartStore } from "@/features/customer/cart/useCartStore";
 
 /* ─── Shared viewer mock ───────────────────────────────────────────── */
@@ -377,5 +377,99 @@ describe("CustomerTryOnPage — duplicate submission prevention", () => {
     await screen.findByRole("button", { name: /try again/i });
 
     expect(screen.getByTestId("cache-notice")).toBeInTheDocument();
+  });
+
+  it("does not show cache notice when backend returns no cache metadata", async () => {
+    tryOnMutate.mockImplementation((_payload, opts) =>
+      opts.onSuccess({
+        id: "s1",
+        productId: "p1",
+        sessionType: TRY_ON_SESSION_TYPES.model3D,
+        resultImageUrl: "https://cdn.example.test/result.glb",
+        resultType: "Model3D",
+        // no isCached, no generationSource
+      }),
+    );
+
+    await enterTryOnRoom();
+    fireEvent.click(screen.getByRole("button", { name: /try product in 3d/i }));
+    await screen.findByRole("button", { name: /try again/i });
+
+    expect(screen.queryByTestId("cache-notice")).not.toBeInTheDocument();
+  });
+
+  it("shows AI_GENERATION_PREVIOUSLY_FAILED friendly message in try-on error area", async () => {
+    const axiosError = Object.assign(new Error("prev-failed"), {
+      isAxiosError: true,
+      response: { status: 422, data: { code: "AI_GENERATION_PREVIOUSLY_FAILED" } },
+    });
+    vi.spyOn(axios, "isAxiosError").mockReturnValue(true);
+    tryOnMutate.mockImplementation((_payload, opts) => opts.onError(axiosError));
+
+    await enterTryOnRoom();
+    fireEvent.click(screen.getByRole("button", { name: /try product/i }));
+
+    expect(
+      await screen.findByText(/previous ai generation for the same input failed recently/i),
+    ).toBeInTheDocument();
+    vi.spyOn(axios, "isAxiosError").mockRestore();
+  });
+
+  it("3D result uses resultImageUrl as model when resultModelUrl is absent", async () => {
+    tryOnMutate.mockImplementation((_payload, opts) =>
+      opts.onSuccess({
+        id: "s1",
+        productId: "p1",
+        sessionType: TRY_ON_SESSION_TYPES.model3D,
+        resultType: "Model3D",
+        resultImageUrl: "https://cdn.example.test/result.glb",
+        // no resultModelUrl
+      }),
+    );
+
+    await enterTryOnRoom();
+    fireEvent.click(screen.getByRole("button", { name: /try product in 3d/i }));
+    await screen.findByRole("button", { name: /try again/i });
+
+    // The 3D viewer should be rendered with the resultImageUrl used as modelUrl
+    expect(screen.getByTestId("mock-3d-viewer")).toBeInTheDocument();
+    expect(screen.getByText(/3D garment try-on result/i)).toBeInTheDocument();
+  });
+});
+
+/* ─── 4. Avatar capability contract ──────────────────────────────── */
+describe("canUse2DTryOn — backend capability contract", () => {
+  it("returns true when has2DCapability is true", () => {
+    expect(canUse2DTryOn({ id: "a1", customerId: "c1", measurements: { heightCm: 170 }, avatar3dModelUrl: null, has2DCapability: true, has3DCapability: false })).toBe(true);
+  });
+
+  it("returns true when sourceImageUrl is present even if has2DCapability is false", () => {
+    expect(
+      canUse2DTryOn({ id: "a1", customerId: "c1", measurements: { heightCm: 170 }, avatar3dModelUrl: null, has2DCapability: false, has3DCapability: false, sourceImageUrl: "https://cdn.example.test/front.jpg" }),
+    ).toBe(true);
+  });
+
+  it("returns false when neither has2DCapability nor sourceImageUrl is set", () => {
+    expect(canUse2DTryOn({ id: "a1", customerId: "c1", measurements: { heightCm: 170 }, avatar3dModelUrl: null, has2DCapability: false, has3DCapability: false })).toBe(false);
+  });
+});
+
+/* ─── 5. Avatar photo page: AI_GENERATION_PREVIOUSLY_FAILED ─────── */
+describe("CustomerAvatarPhotoPage — AI_GENERATION_PREVIOUSLY_FAILED", () => {
+  it("shows friendly message when backend returns AI_GENERATION_PREVIOUSLY_FAILED", async () => {
+    const axiosError = Object.assign(new Error("prev-failed"), {
+      isAxiosError: true,
+      response: { status: 422, data: { code: "AI_GENERATION_PREVIOUSLY_FAILED" } },
+    });
+    vi.spyOn(axios, "isAxiosError").mockReturnValue(true);
+    extractMutate.mockImplementation((_payload, opts) => opts.onError(axiosError));
+
+    renderAvatarPhotoPage();
+    await fillAndSubmitAvatarForm();
+
+    expect(
+      await screen.findByText(/previous ai generation for the same input failed recently/i),
+    ).toBeInTheDocument();
+    vi.spyOn(axios, "isAxiosError").mockRestore();
   });
 });

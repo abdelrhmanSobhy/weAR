@@ -17,7 +17,7 @@ export interface CreateTryOnSessionPayload {
 }
 
 export const canUse2DTryOn = (avatar: CustomerAvatar | null | undefined): boolean =>
-  Boolean(avatar?.has2DCapability);
+  Boolean(avatar?.has2DCapability) || Boolean(avatar?.sourceImageUrl);
 
 export const canUse3DTryOn = (avatar: CustomerAvatar | null | undefined): boolean =>
   Boolean(avatar?.has3DCapability);

@@ -56,6 +56,9 @@ const extractErrorMessage = (error: unknown): string => {
     if (code === "AI_GENERATION_QUOTA_EXCEEDED") {
       return "Daily AI generation limit reached. Previously generated results may still be available.";
     }
+    if (code === "AI_GENERATION_PREVIOUSLY_FAILED") {
+      return "Previous AI generation for the same input failed recently. Please try again later or change the input.";
+    }
     if (code === "EXTERNAL_SERVICE_ERROR") {
       return "The try-on service is temporarily unavailable. Please try again shortly.";
     }

@@ -30,6 +30,9 @@ const extractErrorMessage = (error: unknown): { message: string; fieldErrors?: R
     if (code === "AI_GENERATION_QUOTA_EXCEEDED") {
       return { message: "Daily AI generation limit reached. Previously generated results may still be available." };
     }
+    if (code === "AI_GENERATION_PREVIOUSLY_FAILED") {
+      return { message: "Previous AI generation for the same input failed recently. Please try again later or change the input." };
+    }
     if (code === "AI_EXTRACTION_FAILED" || code === "INVALID_FILE_TYPE") {
       return { message: msg ?? "The AI model could not process the uploaded images. Please upload clear full-body front and side-view photos with plain background and form-fitting clothes.", fieldErrors };
     }
