@@ -50,6 +50,12 @@ const extractErrorMessage = (error: unknown): string => {
     const code = error.response?.data?.code ?? error.response?.data?.Code;
     const backendMessage =
       error.response?.data?.message ?? error.response?.data?.error?.message;
+    if (code === "AI_GENERATION_IN_PROGRESS") {
+      return "The same generation is already in progress. Please wait a moment and try again shortly.";
+    }
+    if (code === "AI_GENERATION_QUOTA_EXCEEDED") {
+      return "Daily AI generation limit reached. Previously generated results may still be available.";
+    }
     if (code === "EXTERNAL_SERVICE_ERROR") {
       return "The try-on service is temporarily unavailable. Please try again shortly.";
     }
@@ -859,6 +865,11 @@ export function CustomerTryOnPage() {
                 {isCompleted && (
                   <div className="space-y-2 border-t border-[#e8ddd5] pt-4">
                     <p className="text-[13px] text-[#9c6b54]">{selectedSummary}</p>
+                    {(state.session?.isCached || state.session?.generationSource === "Cache") && (
+                      <p className="rounded-xl bg-[#f5f0eb] px-3 py-2 text-[12px] text-[#6F625B]" role="status" data-testid="cache-notice">
+                        Result reused from a previous generation.
+                      </p>
+                    )}
                     {(state.session?.sizeRecommendation || state.session?.recommendedSize) && (
                       <p className="rounded-xl bg-[#fef7f0] px-4 py-3 text-[14px] font-semibold text-[#2F2925]">
                         Recommended size:{" "}

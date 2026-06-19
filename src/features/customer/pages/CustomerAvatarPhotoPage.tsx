@@ -1,6 +1,6 @@
 import type React from "react";
 import axios from "axios";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,12 @@ const extractErrorMessage = (error: unknown): { message: string; fieldErrors?: R
       ? data.errors as Record<string, string[]>
       : undefined;
     const msg = data?.message ?? data?.error?.message ?? (Array.isArray(data?.errors) ? data.errors[0] : null);
+    if (code === "AI_GENERATION_IN_PROGRESS") {
+      return { message: "The same generation is already in progress. Please wait a moment and try again shortly." };
+    }
+    if (code === "AI_GENERATION_QUOTA_EXCEEDED") {
+      return { message: "Daily AI generation limit reached. Previously generated results may still be available." };
+    }
     if (code === "AI_EXTRACTION_FAILED" || code === "INVALID_FILE_TYPE") {
       return { message: msg ?? "The AI model could not process the uploaded images. Please upload clear full-body front and side-view photos with plain background and form-fitting clothes.", fieldErrors };
     }
@@ -52,6 +58,7 @@ export function CustomerAvatarPhotoPage() {
   const returnTo = getSafeCustomerReturnRoute(new URLSearchParams(location.search).get("returnTo"), CUSTOMER_ROUTES.avatar);
   const returnsToTryOn = returnTo.includes("try-on");
   const extract = useExtractCustomerAvatarFromImage();
+  const inFlight = useRef(false);
   const [frontFile, setFrontFile] = useState<File | null>(null);
   const [sideFile, setSideFile] = useState<File | null>(null);
   const [heightCm, setHeightCm] = useState("");
@@ -59,6 +66,7 @@ export function CustomerAvatarPhotoPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]> | null>(null);
   const [result, setResult] = useState<CustomerAvatar | null>(null);
   const [traceId, setTraceId] = useState<string | null>(null);
+  const [cacheNotice, setCacheNotice] = useState<string | null>(null);
   const extractionStages = ["Analyzing your images…", "Extracting measurements…", "Generating your 3D avatar…", "This can take up to 1–2 minutes while we extract measurements and generate your 3D avatar…"];
   const [stageIndex, setStageIndex] = useState(0);
   const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -76,7 +84,7 @@ export function CustomerAvatarPhotoPage() {
   const sidePreviewUrl = useMemo(() => sideFile ? URL.createObjectURL(sideFile) : null, [sideFile]);
   useEffect(() => () => { if (frontPreviewUrl) URL.revokeObjectURL(frontPreviewUrl); }, [frontPreviewUrl]);
   useEffect(() => () => { if (sidePreviewUrl) URL.revokeObjectURL(sidePreviewUrl); }, [sidePreviewUrl]);
-  const resetForm = () => { setFrontFile(null); setSideFile(null); setResult(null); setError(null); setFieldErrors(null); setTraceId(null); };
+  const resetForm = useCallback(() => { setFrontFile(null); setSideFile(null); setResult(null); setError(null); setFieldErrors(null); setTraceId(null); setCacheNotice(null); }, []);
   const onFileChange = (setter: (file: File | null) => void) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const next = event.target.files?.[0] ?? null;
     setResult(null); setError(null); setFieldErrors(null); setTraceId(null);
@@ -86,13 +94,31 @@ export function CustomerAvatarPhotoPage() {
   };
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (inFlight.current || extract.isPending) return;
     if (!frontFile) { setError("Choose a JPEG or PNG front-view full-body image."); return; }
     if (!sideFile) { setError("Choose a JPEG or PNG side-view full-body image."); return; }
     const parsedHeight = Number(heightCm);
     if (!Number.isFinite(parsedHeight) || parsedHeight < 1) { setError("Height in centimeters is required."); return; }
+    inFlight.current = true;
+    setCacheNotice(null);
     extract.mutate({ frontImageFile: frontFile, sideImageFile: sideFile, heightCm: parsedHeight }, {
-      onSuccess: (data) => { setResult(data); setError(null); setFieldErrors(null); setTraceId(null); },
-      onError: (err) => { const parsed = extractErrorMessage(err); setError(parsed.message); setFieldErrors(parsed.fieldErrors ?? null); setTraceId(extractTraceId(err)); },
+      onSuccess: (data) => {
+        inFlight.current = false;
+        setResult(data);
+        setError(null);
+        setFieldErrors(null);
+        setTraceId(null);
+        if (data.isCached || data.generationSource === "Cache") {
+          setCacheNotice(data.message ?? "Avatar reused from a previous generation.");
+        }
+      },
+      onError: (err) => {
+        inFlight.current = false;
+        const parsed = extractErrorMessage(err);
+        setError(parsed.message);
+        setFieldErrors(parsed.fieldErrors ?? null);
+        setTraceId(extractTraceId(err));
+      },
     });
   };
   const safeModelUrl = result ? toSafeModelUrl(result.avatar3dModelUrl) : null;
@@ -118,6 +144,7 @@ export function CustomerAvatarPhotoPage() {
       </Card>
 
       {error ? <div><InlineState tone="error" title={error} />{traceId ? <p className="mt-1 text-xs text-[#6F625B]">Reference: {traceId}</p> : null}</div> : null}
+      {cacheNotice ? <p className="rounded-xl border border-[#E4DCD1] bg-[#F5F0EB] px-4 py-2 text-sm text-[#6F625B]" role="status" data-testid="cache-notice">{cacheNotice}</p> : null}
       {fieldErrors ? (
         <div className="rounded-2xl border border-[#E4DCD1] bg-[#FBF2F0] p-4 text-sm text-[#7A2E2E]" role="alert">
           <ul className="grid gap-1">

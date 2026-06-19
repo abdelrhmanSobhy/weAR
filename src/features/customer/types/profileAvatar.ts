@@ -104,6 +104,9 @@ export interface CustomerAvatar {
   sourceImageUrl?: string | null;
   has2DCapability: boolean;
   has3DCapability: boolean;
+  generationSource?: string | null;
+  isCached?: boolean | null;
+  message?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -43,6 +43,8 @@ export interface TryOnSession {
   result3dModelUrl?: string | null;
   model3dUrl?: string | null;
   traceId?: string | null;
+  generationSource?: string | null;
+  isCached?: boolean | null;
   sizeRecommendation?: string | null;
   recommendedSize?: string | null;
   confidenceScore?: number | null;
