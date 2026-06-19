@@ -1,280 +1,354 @@
-# weAR – Virtual Fitting Room SaaS Frontend
+<div align="center">
 
-<p align="left">
-  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white" alt="React 19" />
-  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript 5" />
-  <img src="https://img.shields.io/badge/Vite-7-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 7" />
-  <img src="https://img.shields.io/badge/TailwindCSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS 4" />
-  <img src="https://img.shields.io/badge/TanStack_Query-5-FF4154?style=flat-square" alt="TanStack Query 5" />
-  <img src="https://img.shields.io/badge/tests-486_passing-22C55E?style=flat-square" alt="tests" />
-</p>
+# 🪞 weAR — Virtual Fitting Room
 
-> React + TypeScript frontend for a role-based virtual fitting-room platform that serves retailers, customers, and platform admins.
+**A full-stack SaaS frontend for AI-powered virtual try-on experiences**
 
----
+_Try clothes on your 3D avatar before you buy — powered by React, TypeScript, and fal.ai (via backend proxy)._
 
-## Table of contents
+<br/>
 
-- [Overview](#overview)
-- [Current product scope](#current-product-scope)
-- [Tech stack](#tech-stack)
-- [Getting started](#getting-started)
-- [Environment variables](#environment-variables)
-- [Available scripts](#available-scripts)
-- [Application architecture](#application-architecture)
-- [Routing map](#routing-map)
-- [Authentication and authorization](#authentication-and-authorization)
-- [API integration](#api-integration)
-- [Backend contract](#backend-contract)
-- [AI cost-control and security](#ai-cost-control-and-security)
-- [Feature documentation](#feature-documentation)
-- [Testing strategy](#testing-strategy)
-- [Development conventions](#development-conventions)
-- [Project status](#project-status)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![TanStack Query](https://img.shields.io/badge/TanStack_Query-5-FF4154?style=for-the-badge)](https://tanstack.com/query)
+[![Tests](https://img.shields.io/badge/tests-486_passing-22C55E?style=for-the-badge&logo=vitest&logoColor=white)](./src)
+
+</div>
 
 ---
 
-## Overview
+<div align="center">
 
-**weAR** is a virtual fitting-room SaaS frontend. It combines a B2B retailer dashboard with a B2C shopping experience and shared platform infrastructure.
+### 🛍️ Shop &nbsp;·&nbsp; 👗 Try On &nbsp;·&nbsp; 🧍 3D Avatar &nbsp;·&nbsp; 📦 Manage &nbsp;·&nbsp; 📊 Analytics
 
-The current codebase is a **single Vite-powered SPA** with role-based routing and modular feature folders. It integrates with the production backend by default and can be pointed to any compatible API through an environment variable.
-
-Primary user roles:
-
-| Role | Capabilities |
-|------|-------------|
-| **Retailer** | Products, inventory, categories, offers, orders, subscriptions, analytics, settings, notifications |
-| **Customer** | Shop, profile/avatar/address, virtual try-on, favorites, outfits, compare, cart/checkout, AI wardrobe suggestions |
-| **Admin** | Route and placeholder support present; full portal implementation pending |
+</div>
 
 ---
 
-## Current product scope
+## 📋 Table of Contents
 
-### Implemented frontend areas
-
-- Role selection entry point.
-- Retailer authentication, signup, pricing, payment, password reset, and protected dashboard area.
-- Customer authentication, signup, password reset, and protected shopping area.
-- Shared persisted auth store with hydration-safe route guards.
-- Axios API client with bearer-token injection and role-aware token refresh handling.
-- Retailer dashboard, product, inventory, order, offer, category, subscription, payment, notification, help, and settings API/query layers.
-- Customer catalog, product details, favorites, profile, addresses, avatar, cart, checkout, outfits, AI suggestions, wardrobe collections, compare, static content, and try-on API/query/UI layers.
-- **Virtual try-on** with 3D model viewer (`@google/model-viewer`) and 2D image overlay modes.
-- **Photo-based avatar extraction** with staged progress feedback and field-level validation.
-- **AI cost-control layer** — duplicate-submission prevention, backend cache-response handling, and friendly error messages for all AI generation error codes.
-- Unit/component tests with Vitest and React Testing Library (486 passing).
-
-### Pending or placeholder areas
-
-- Full Admin portal beyond the `/admin` placeholder route.
-- Backend-dependent production flows require the configured API to be available.
+- [✨ Overview](#-overview)
+- [🚀 Features](#-features)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [⚙️ Prerequisites & Getting Started](#️-prerequisites--getting-started)
+- [🔐 Environment Variables](#-environment-variables)
+- [📜 Available Scripts](#-available-scripts)
+- [🗂️ Project Structure](#️-project-structure)
+- [🗺️ Routing Map](#️-routing-map)
+- [🔒 Authentication & Authorization](#-authentication--authorization)
+- [🌐 API Integration](#-api-integration)
+- [📡 Backend Contract](#-backend-contract)
+- [🛡️ AI Cost-Control & Security](#️-ai-cost-control--security)
+- [🧪 Testing Strategy](#-testing-strategy)
+- [📏 Development Conventions](#-development-conventions)
+- [📊 Project Status](#-project-status)
 
 ---
 
-## Tech stack
+## ✨ Overview
 
-| Category | Technology |
-|----------|-----------|
-| Build tool | Vite 7 |
-| Core UI | React 19 + React DOM 19 |
-| Language | TypeScript 5 |
-| Routing | React Router 7 |
-| Server state | TanStack Query 5 |
-| Client state | Zustand 5 |
-| HTTP | Axios 1 |
-| Styling | Tailwind CSS 4 via `@tailwindcss/vite` |
-| UI foundations | Radix UI, shadcn-compatible components, CVA, `tailwind-merge` |
-| Forms/validation | React Hook Form, Zod |
-| Icons/charts | Lucide React, Recharts |
-| 3D viewer | `@google/model-viewer` |
-| Testing | Vitest, jsdom, React Testing Library, jest-dom |
-| Quality | ESLint 9, Prettier |
+**weAR** is a virtual fitting-room SaaS platform frontend. It combines a **B2B retailer dashboard** with a **B2C shopping experience** and shared platform infrastructure — all in a single Vite-powered SPA with role-based routing.
+
+```
+Customer  ──►  Shop products  ──►  Upload photos  ──►  3D/2D Try-On  ──►  Add to Cart
+Retailer  ──►  Manage catalog  ──►  Track orders   ──►  View analytics ──►  Grow sales
+```
+
+> All AI generation (avatar extraction, virtual try-on) is proxied through the backend.  
+> **No third-party AI keys ever touch the frontend.**
 
 ---
 
-## Getting started
+## 🚀 Features
+
+<table>
+<tr>
+<td width="50%">
+
+**👗 Customer Experience**
+- 🛍️ Full product catalog with filters
+- ❤️ Favorites & product comparison
+- 🧍 Photo-based 3D avatar extraction
+- 🪞 Virtual try-on (3D model + 2D overlay)
+- 📏 Manual & AI-extracted measurements
+- 🤖 AI wardrobe suggestions
+- 👚 Outfit builder & wardrobe collections
+- 🛒 Cart & checkout
+- 📦 Order tracking
+
+</td>
+<td width="50%">
+
+**📊 Retailer Dashboard**
+- 📈 KPIs, charts & analytics
+- 🏷️ Product, inventory & category management
+- 💰 Offers & discount management
+- 📋 Order management & export
+- 💳 Subscription & payment management
+- 🔔 Notifications
+- ⚙️ Profile, avatar & settings
+
+</td>
+</tr>
+</table>
+
+**🛡️ Security & Reliability**
+- 🔒 No third-party AI keys in the frontend
+- 🚫 Duplicate-submission prevention (inFlight guard)
+- ♻️ Backend cache-response handling
+- 🧭 Friendly AI error messages for all generation failure codes
+- 🔁 Automatic token refresh with request queueing
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| ⚡ Build | **Vite 7** | Lightning-fast dev server & bundler |
+| ⚛️ UI | **React 19** | Component rendering |
+| 🏷️ Language | **TypeScript 5** | Type safety across the codebase |
+| 🗺️ Routing | **React Router 7** | Client-side navigation & guards |
+| 🌐 Server state | **TanStack Query 5** | Data fetching, caching & sync |
+| 💾 Client state | **Zustand 5** | Persisted auth & UI state |
+| 📡 HTTP | **Axios 1** | API client with interceptors |
+| 🎨 Styling | **Tailwind CSS 4** | Utility-first CSS |
+| 🧩 UI primitives | **Radix UI + shadcn** | Accessible component foundations |
+| 📋 Forms | **React Hook Form + Zod** | Validation & schema parsing |
+| 📊 Charts | **Recharts** | Retailer analytics visualisation |
+| 🎭 Icons | **Lucide React** | Consistent icon set |
+| 🧊 3D viewer | **@google/model-viewer** | WebGL-based glTF/GLB viewer |
+| 🧪 Testing | **Vitest + RTL** | Unit & component tests |
+| ✅ Quality | **ESLint 9 + Prettier** | Linting & formatting |
+
+---
+
+## ⚙️ Prerequisites & Getting Started
 
 ### Prerequisites
 
-- Node.js compatible with Vite 7 and the checked-in lockfile.
-- npm.
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| **Node.js** | `>= 18.x` (22.x recommended) | Required by Vite 7 |
+| **npm** | `>= 9.x` | Bundled with Node.js |
+| **Git** | any | For cloning the repository |
 
-### Installation
+> 💡 **Tip:** Use [nvm](https://github.com/nvm-sh/nvm) to manage Node versions:
+> ```bash
+> nvm install 22
+> nvm use 22
+> ```
+
+### 1 · Clone
+
+```bash
+git clone https://github.com/abdelrhmanSobhy/weAR.git
+cd weAR
+```
+
+### 2 · Install dependencies
 
 ```bash
 npm install
 ```
 
-### Run locally
+### 3 · Configure environment
+
+```bash
+# Copy the example and edit if needed
+cp .env.example .env
+```
+
+Edit `.env` and set `VITE_API_BASE_URL` to your backend URL (see [Environment Variables](#-environment-variables)).
+
+### 4 · Start the dev server
 
 ```bash
 npm run dev
 ```
 
-The app starts with Vite. By default, API requests target the production backend configured in `src/lib/axios.ts` unless `VITE_API_BASE_URL` is set.
-
-### Build for production
-
-```bash
-npm run build
-```
-
-### Preview a production build
-
-```bash
-npm run preview
-```
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## Environment variables
-
-Create a local `.env` file when you need to override defaults:
-
-```bash
-VITE_API_BASE_URL=https://your-api.example.com
-```
+## 🔐 Environment Variables
 
 | Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `VITE_API_BASE_URL` | No | `https://vfr-backend.onrender.com` | Base URL used by the shared Axios client. |
+|----------|:--------:|---------|-------------|
+| `VITE_API_BASE_URL` | No | `https://vfr-backend.onrender.com` | Base URL for all API calls |
 
-> **Security note:** The frontend holds no third-party AI provider keys (`FAL_API_KEY`, `VITE_CLOUDINARY_SECRET`, `VITE_STRIPE_SECRET_KEY`, etc.). All paid AI calls are proxied exclusively through the backend.
-
----
-
-## Available scripts
-
-| Script | Command | Purpose |
-|--------|---------|---------|
-| `dev` | `vite` | Starts the local development server. |
-| `build` | `vite build` | Creates a production build. |
-| `lint` | `eslint .` | Runs ESLint over the repository. |
-| `preview` | `vite preview` | Serves the built app locally. |
-| `test` | `vitest run` | Runs the test suite once. |
-
----
-
-## Application architecture
-
-The app follows a **single SPA + feature/domain modular architecture**.
-
-```text
-src/
-  app/
-    AppProviders.tsx        # App-level providers (TanStack Query)
-    globals.css             # Global Tailwind/CSS setup
-    guards/                 # Auth and role guards
-    routes/router.tsx       # Central React Router tree
-  components/
-    layout/                 # Shared app/auth layouts
-    ui/                     # Reusable shadcn-style primitives
-  features/
-    auth/                   # Retailer auth + shared auth store
-    common/                 # Shared pages (role selection, coming soon)
-    customer/               # Customer storefront, account, cart, try-on, APIs, queries
-    retailer/               # Retailer dashboard, management pages, APIs, queries
-    admin/                  # Admin placeholders/future pages
-  lib/
-    axios.ts                # Shared API client and refresh handling
-    utils.ts                # Shared utility helpers
-  test/
-    setup.ts                # Vitest setup
+```bash
+# .env (local only — never commit real values)
+VITE_API_BASE_URL=http://localhost:3000
 ```
 
-### Architectural principles
-
-- Keep each business domain inside `src/features/<domain>`.
-- Keep route protection in `src/app/guards`.
-- Keep API transport concerns in `src/lib/axios.ts`.
-- Use TanStack Query for backend/server state.
-- Use Zustand for persisted client/session state and local UX state.
-- Keep shared UI primitives in `src/components/ui`.
+> ⛔ **Forbidden variables** — these must never exist in the frontend:
+> `VITE_FAL_API_KEY` · `FAL_API_KEY` · `VITE_CLOUDINARY_SECRET` · `VITE_STRIPE_SECRET_KEY`
 
 ---
 
-## Routing map
+## 📜 Available Scripts
 
-### Public routes
-
-| Route | Page |
-|-------|------|
-| `/` | Role selection page. |
-| `/login` | Redirects to `/`. |
-| `/login/retailer` | Retailer login. |
-| `/signup/retailer` | Retailer signup step 1. |
-| `/signup/retailer/step-2` | Retailer signup step 2. |
-| `/signup/retailer/pricing` | Retailer pricing selection. |
-| `/signup/retailer/payment` | Retailer payment. |
-| `/forgot-password` | Retailer forgot-password flow. |
-| `/reset-password` | Retailer reset-password flow. |
-| `/login/customer` | Customer login. |
-| `/signup/customer` | Customer signup. |
-| `/forgot-password/customer` | Customer forgot-password flow. |
-| `/reset-password/customer` | Customer reset-password flow. |
-
-### Protected retailer routes
-
-| Route | Page |
-|-------|------|
-| `/retailer` | Retailer dashboard. |
-| `/retailer/products` | Product management/listing. |
-| `/retailer/inventory` | Inventory management. |
-| `/retailer/orders` | Order management. |
-| `/retailer/offers` | Offer management. |
-| `/retailer/categories` | Category/subcategory management. |
-| `/retailer/pricing` | Subscription/pricing management. |
-| `/retailer/help` | Help page. |
-| `/retailer/settings` | Retailer account/settings. |
-
-### Protected customer routes
-
-| Route | Page |
-|-------|------|
-| `/customer/home` | Customer home page. |
-| `/customer/shop` | Product catalog/shop. |
-| `/customer/products/:productId` | Product details. |
-| `/customer/try-on` | Virtual try-on. |
-| `/customer/try-on/:productId` | Product-specific virtual try-on. |
-| `/customer/try-on/history` | Try-on session history. |
-| `/customer/favorites` | Favorite products. |
-| `/customer/account` | Account profile. |
-| `/customer/account/addresses` | Address book. |
-| `/customer/avatar` | Avatar overview. |
-| `/customer/avatar/manual` | Manual avatar measurements. |
-| `/customer/avatar/photo` | Photo-based avatar extraction. |
-| `/customer/cart` | Cart. |
-| `/customer/checkout` | Checkout. |
-| `/customer/outfits` | Saved outfits. |
-| `/customer/ai-suggestions` | AI wardrobe suggestions. |
-| `/customer/wardrobe/collections` | Wardrobe collections. |
-| `/customer/compare` | Product comparison. |
-| `/customer/about` | Static about page. |
-| `/customer/shipping-returns` | Shipping and returns page. |
-| `/customer/blog` | Blog/static content page. |
-
-### Admin route
-
-| Route | Page |
-|-------|------|
-| `/admin` | Coming Soon placeholder. |
-
-Unknown routes redirect to `/`.
+| Script | Command | Description |
+|--------|---------|-------------|
+| `dev` | `vite` | 🚀 Start local dev server with HMR |
+| `build` | `vite build` | 📦 Create optimised production build |
+| `preview` | `vite preview` | 🔍 Preview production build locally |
+| `test` | `vitest run` | 🧪 Run test suite once |
+| `lint` | `eslint .` | 🔎 Lint the entire codebase |
 
 ---
 
-## Authentication and authorization
+## 🗂️ Project Structure
 
-Authentication state is stored with Zustand persistence under the `wear-auth` storage key.
+```
+weAR/
+├── 📁 public/                      # Static assets served as-is
+├── 📁 src/
+│   ├── 📁 app/
+│   │   ├── AppProviders.tsx        # TanStack Query & global providers
+│   │   ├── globals.css             # Tailwind base + global styles
+│   │   ├── 📁 guards/              # RequireAuth, RequireRole
+│   │   └── 📁 routes/
+│   │       └── router.tsx          # Centralised React Router tree
+│   │
+│   ├── 📁 components/
+│   │   ├── 📁 layout/              # AppLayout, AuthLayout (shared shells)
+│   │   └── 📁 ui/                  # shadcn-style primitives (Button, Card…)
+│   │
+│   ├── 📁 features/
+│   │   ├── 📁 auth/                # Retailer auth + shared Zustand auth store
+│   │   ├── 📁 common/              # RoleSelectPage, ComingSoonPage
+│   │   │
+│   │   ├── 📁 customer/            # ── Customer domain ──────────────────────
+│   │   │   ├── 📁 api/             # customerAuth, catalog, profileAvatar…
+│   │   │   ├── 📁 cart/            # Cart store, CartPage, CheckoutPage
+│   │   │   ├── 📁 compare/         # Product comparison
+│   │   │   ├── 📁 components/      # ProductCard, PriceDisplay, AvatarShared…
+│   │   │   ├── 📁 layouts/         # CustomerLayout (nav + sidebar)
+│   │   │   ├── 📁 pages/           # Home, Shop, Avatar, Account…
+│   │   │   ├── 📁 queries/         # TanStack Query hooks
+│   │   │   ├── 📁 routes/          # CUSTOMER_ROUTES constants
+│   │   │   ├── 📁 styles/          # customerTheme.ts tokens
+│   │   │   ├── 📁 try-on/          # ── Try-On sub-domain ────────────────────
+│   │   │   │   ├── 📁 api/         # tryOn.api.ts
+│   │   │   │   ├── 📁 components/  # TryOn3DViewer, ErrorBoundary
+│   │   │   │   ├── 📁 hooks/       # tryOn.queries.ts
+│   │   │   │   ├── 📁 pages/       # CustomerTryOnPage, HistoryPage
+│   │   │   │   ├── 📁 types/       # TryOnSession, flow reducer, helpers
+│   │   │   │   └── 📁 utils/       # modelUrl safety utils
+│   │   │   └── 📁 types/           # CustomerAvatar, BodyMeasurements…
+│   │   │
+│   │   ├── 📁 retailer/            # ── Retailer domain ──────────────────────
+│   │   │   ├── 📁 api/             # dashboard, products, inventory, orders…
+│   │   │   ├── 📁 components/      # Dashboard widgets, data tables
+│   │   │   ├── 📁 layouts/         # RetailerLayout
+│   │   │   ├── 📁 pages/           # Dashboard, Products, Orders, Settings…
+│   │   │   ├── 📁 queries/         # TanStack Query hooks
+│   │   │   └── 📁 types/           # Domain types
+│   │   │
+│   │   └── 📁 admin/               # 🔲 Placeholder (Coming Soon)
+│   │
+│   ├── 📁 lib/
+│   │   ├── axios.ts                # Shared API client + interceptors
+│   │   └── utils.ts                # Shared helpers (cn, etc.)
+│   │
+│   └── 📁 test/
+│       └── setup.ts                # Vitest + jest-dom setup
+│
+├── .env.example                    # Environment variable template
+├── vite.config.ts                  # Vite + Vitest config
+├── tsconfig.json                   # TypeScript config
+├── eslint.config.js                # ESLint 9 flat config
+└── package.json
+```
 
-Stored session data includes `user`, `role`, `isAuthenticated`, `accessToken`, and `refreshToken`.
+---
 
-Route protection is split into two guards:
+## 🗺️ Routing Map
 
-- `RequireAuth` — waits for persisted-store hydration; redirects unauthenticated users to `/`.
-- `RequireRole` — validates the active role; redirects users to the correct home/login path when the role does not match.
+### 🌐 Public
+
+| Route | Page |
+|-------|------|
+| `/` | Role selection |
+| `/login/retailer` | Retailer login |
+| `/signup/retailer` → `/step-2` → `/pricing` → `/payment` | Retailer onboarding funnel |
+| `/forgot-password` · `/reset-password` | Retailer password recovery |
+| `/login/customer` | Customer login |
+| `/signup/customer` | Customer signup |
+| `/forgot-password/customer` · `/reset-password/customer` | Customer password recovery |
+
+### 🏪 Protected — Retailer (`/retailer/*`)
+
+| Route | Page |
+|-------|------|
+| `/retailer` | Dashboard (KPIs & charts) |
+| `/retailer/products` | Product management |
+| `/retailer/inventory` | Inventory management |
+| `/retailer/orders` | Order management |
+| `/retailer/offers` | Offer management |
+| `/retailer/categories` | Category & subcategory management |
+| `/retailer/pricing` | Subscription management |
+| `/retailer/help` | Help page |
+| `/retailer/settings` | Account & settings |
+
+### 🛍️ Protected — Customer (`/customer/*`)
+
+| Route | Page |
+|-------|------|
+| `/customer/home` | Home page |
+| `/customer/shop` | Product catalog |
+| `/customer/products/:productId` | Product details |
+| `/customer/try-on` · `/customer/try-on/:productId` | 🪞 Virtual fitting room |
+| `/customer/try-on/history` | Try-on history |
+| `/customer/favorites` | Saved favourites |
+| `/customer/compare` | Product comparison |
+| `/customer/account` | Profile settings |
+| `/customer/account/addresses` | Address book |
+| `/customer/avatar` | Avatar overview |
+| `/customer/avatar/manual` | Manual measurements |
+| `/customer/avatar/photo` | 📸 Photo extraction flow |
+| `/customer/cart` | Shopping cart |
+| `/customer/checkout` | Checkout |
+| `/customer/outfits` | Outfit builder |
+| `/customer/ai-suggestions` | 🤖 AI wardrobe suggestions |
+| `/customer/wardrobe/collections` | Wardrobe collections |
+| `/customer/about` · `/customer/shipping-returns` · `/customer/blog` | Static pages |
+
+### 🔧 Admin
+
+| Route | Page |
+|-------|------|
+| `/admin` | Coming Soon placeholder |
+
+> Unknown routes redirect to `/`.
+
+---
+
+## 🔒 Authentication & Authorization
+
+Auth state is persisted via **Zustand** under the `wear-auth` storage key.
+
+```ts
+// Stored session shape
+{
+  user: UserProfile | null
+  role: "retailer" | "customer" | "admin" | null
+  isAuthenticated: boolean
+  accessToken: string | null
+  refreshToken: string | null
+}
+```
+
+**Guards:**
+
+| Guard | Behaviour |
+|-------|-----------|
+| `RequireAuth` | Waits for store hydration; redirects unauthenticated users to `/` |
+| `RequireRole` | Validates role; redirects to correct home/login when role mismatches |
 
 | Role | Home path |
 |------|-----------|
@@ -284,89 +358,96 @@ Route protection is split into two guards:
 
 ---
 
-## API integration
+## 🌐 API Integration
 
-All backend calls use the shared `apiClient` from `src/lib/axios.ts`.
+All calls use the shared `apiClient` from `src/lib/axios.ts`.
 
-### Shared API client behavior
+```
+Request  ──►  apiClient  ──►  Bearer token injected  ──►  Backend
+Response ◄──  apiClient  ◄──  401? → refresh + replay ◄──  Backend
+```
 
-- Uses `VITE_API_BASE_URL` when provided; falls back to `https://vfr-backend.onrender.com`.
-- Sends JSON by default.
-- Adds `Authorization: Bearer <token>` for non-auth endpoints.
-- Removes manual `Content-Type` for `FormData` so the browser sets the multipart boundary.
-- Handles `401` responses by attempting a token refresh.
-- Uses role-aware refresh endpoints (`/api/customer/auth/refresh` for customers, `/api/auth/refresh-token` for retailers).
-- Queues failed requests while a refresh is in progress.
+**Key behaviours:**
+- Falls back to `https://vfr-backend.onrender.com` when `VITE_API_BASE_URL` is unset.
+- Strips `Content-Type` from `FormData` uploads so the browser sets the multipart boundary.
+- Queues concurrent failed requests while a token refresh is in flight.
 
-### Retailer API modules
-
-| Module | Responsibility |
-|--------|---------------|
-| `auth.api.ts` | Login, Google login, registration, logout, forgot/reset password. |
-| `dashboard.api.ts` | KPIs, charts, reports, export. |
-| `products.api.ts` | Product CRUD. |
-| `inventory.api.ts` | Inventory list, adjustment, threshold, export. |
-| `categories.api.ts` | Categories and subcategories CRUD/status. |
-| `offers.api.ts` | Offers CRUD/status. |
-| `orders.api.ts` | Orders and status updates/export. |
-| `settings.api.ts` | Profile, password, avatar, logo, notifications, account deletion. |
-| `subscription.api.ts` | Plans, trial, select/upgrade/downgrade/cancel. |
-| `payment.api.ts` | Payment methods. |
-| `notification.api.ts` | Notifications. |
-
-### Customer API modules
+<details>
+<summary><b>📦 Retailer API modules</b></summary>
 
 | Module | Responsibility |
 |--------|---------------|
-| `customerAuth.api.ts` | Registration, profile completion, login, logout, forgot/reset password. |
-| `catalog.api.ts` | Product catalog, details, similar products, compare. |
-| `favorites.api.ts` | Favorite list/toggle/check. |
-| `profileAvatar.api.ts` | Profile, addresses, avatar extraction/repair, measurements. |
-| `tryOn.api.ts` | Try-on session creation, list/details, product sessions. |
-| `outfits.api.ts` | Outfit list/create/delete. |
-| `suggestions.api.ts` | AI wardrobe suggestions. |
-| `wardrobeCollections.api.ts` | Wardrobe collections and items. |
-| `recommendations.api.ts` | Size and complementary product recommendations. |
+| `auth.api.ts` | Login, Google OAuth, registration, logout, password recovery |
+| `dashboard.api.ts` | KPIs, charts, reports, CSV export |
+| `products.api.ts` | Product CRUD |
+| `inventory.api.ts` | Stock levels, adjustments, thresholds, export |
+| `categories.api.ts` | Categories & subcategories CRUD/status |
+| `offers.api.ts` | Offers CRUD/status |
+| `orders.api.ts` | Order list, status updates, export |
+| `settings.api.ts` | Profile, password, avatar, logo, notifications, account deletion |
+| `subscription.api.ts` | Plans, trial, select/upgrade/downgrade/cancel |
+| `payment.api.ts` | Payment methods |
+| `notification.api.ts` | Notification list & actions |
+
+</details>
+
+<details>
+<summary><b>🛍️ Customer API modules</b></summary>
+
+| Module | Responsibility |
+|--------|---------------|
+| `customerAuth.api.ts` | Registration, profile completion, login, logout, password recovery |
+| `catalog.api.ts` | Product catalog, details, similar products, compare |
+| `favorites.api.ts` | Favourite list/toggle/check |
+| `profileAvatar.api.ts` | Profile, addresses, avatar extraction/repair, measurements |
+| `tryOn.api.ts` | Try-on session creation, list/details |
+| `outfits.api.ts` | Outfit list/create/delete |
+| `suggestions.api.ts` | AI wardrobe suggestions |
+| `wardrobeCollections.api.ts` | Wardrobe collections & items |
+| `recommendations.api.ts` | Size & complementary product recommendations |
+
+</details>
 
 ---
 
-## Backend contract
+## 📡 Backend Contract
 
-The frontend is aligned with the following backend DTOs.
+> Frontend is aligned with the following backend DTOs from `vfr-backend`.
 
-### AvatarDto (guaranteed fields)
+### AvatarDto — guaranteed fields
 
 ```ts
 {
   id: string
   heightCm: number
-  // body measurements (weightKg, chestCm, waistCm, hipsCm, …)
-  avatar3dModelUrl: string | null
-  sourceImageUrl: string | null
-  has2DCapability: boolean
-  has3DCapability: boolean
-  lastMeasuredAt: string | null
+  weightKg?: number
+  // ... other body measurements
+  avatar3dModelUrl: string | null   // GLB model URL
+  sourceImageUrl:   string | null   // original photo used for extraction
+  has2DCapability:  boolean
+  has3DCapability:  boolean
+  lastMeasuredAt:   string | null
 }
 ```
 
-> Optional fields (`avatarFrontImageUrl`, `avatar2dImageUrl`, `generationSource`, `isCached`) may be returned by the backend but are **never required** by the UI.
+> `avatarFrontImageUrl`, `avatar2dImageUrl`, `generationSource`, `isCached` — **optional only**, UI never depends on them.
 
-### TryOnResultDto (guaranteed fields)
+### TryOnResultDto — guaranteed fields
 
 ```ts
 {
-  status: string
-  resultImageUrl: string | null   // canonical result — GLB URL for 3D, image URL for 2D
-  resultType: "Model3D" | "Image2D" | string
+  status:          string
+  resultImageUrl:  string | null   // ← canonical result field
+  resultType:      "Model3D" | "Image2D" | string
   recommendedSize: string | null
   confidenceScore: number | null
   durationSeconds: number | null
 }
 ```
 
-> `resultModelUrl`, `isCached`, and `generationSource` are optional. The frontend uses them defensively when present but never requires them.
+> `resultModelUrl`, `isCached`, `generationSource` — **optional**, used defensively when present.
 
-### Avatar capability rules
+### Capability rules
 
 ```
 canUse2DTryOn  =  has2DCapability === true  OR  sourceImageUrl is non-empty
@@ -376,131 +457,118 @@ canUse3DTryOn  =  has3DCapability === true  AND  avatar3dModelUrl passes URL saf
 ### 3D result rendering
 
 ```
-modelUrl = resultModelUrl (if present and safe)  OR  resultImageUrl (fallback)
+modelUrl  =  resultModelUrl (preferred, if present & safe)
+          ??  resultImageUrl (fallback — backend sends GLB URL here for 3D sessions)
 ```
 
 ---
 
-## AI cost-control and security
+## 🛡️ AI Cost-Control & Security
 
-### Security architecture
+### Architecture
 
 ```
-Frontend  →  Backend  →  fal.ai
+┌─────────────┐       ┌─────────────┐       ┌──────────────┐
+│   Frontend  │ ────► │   Backend   │ ────► │   fal.ai     │
+│  (no keys)  │       │  (secrets)  │       │  AI provider │
+└─────────────┘       └─────────────┘       └──────────────┘
 ```
 
-No third-party AI keys (`FAL_API_KEY`, `VITE_CLOUDINARY_SECRET`, `VITE_STRIPE_SECRET_KEY`, etc.) exist in the frontend. The only allowed public config is `VITE_API_BASE_URL`.
+The frontend holds **zero** AI provider credentials.
 
-### Duplicate submission prevention
+### Duplicate Submission Prevention
 
-| Surface | Guard |
-|---------|-------|
-| Avatar photo extraction | `inFlight` ref + `isPending` button disable — blocks re-entry on rapid clicks. |
-| Virtual try-on | Same pattern — `Try Product` button disabled while processing. |
+| Surface | Guard mechanism |
+|---------|----------------|
+| 📸 Avatar photo extraction | `inFlight` ref — blocks re-entry while request is in flight; submit button disabled while `isPending` |
+| 🪞 Virtual try-on | Same `inFlight` ref pattern; `Try Product` button disabled during processing |
 
-### AI generation error codes
+### AI Error Codes
 
 | Code | User-facing message |
 |------|-------------------|
-| `AI_GENERATION_IN_PROGRESS` | The same generation is already in progress. Please wait a moment and try again shortly. |
-| `AI_GENERATION_QUOTA_EXCEEDED` | Daily AI generation limit reached. Previously generated results may still be available. |
-| `AI_GENERATION_PREVIOUSLY_FAILED` | Previous AI generation for the same input failed recently. Please try again later or change the input. |
+| `AI_GENERATION_IN_PROGRESS` | _The same generation is already in progress. Please wait a moment and try again shortly._ |
+| `AI_GENERATION_QUOTA_EXCEEDED` | _Daily AI generation limit reached. Previously generated results may still be available._ |
+| `AI_GENERATION_PREVIOUSLY_FAILED` | _Previous AI generation for the same input failed recently. Please try again later or change the input._ |
 
-### Cache response handling
+### Cache Response Handling
 
-When the backend explicitly returns `isCached: true` or `generationSource: "Cache"`, a non-blocking status notice is shown to the user. Cache is **never** inferred from `durationSeconds` or `confidenceScore`.
+When backend explicitly returns `isCached: true` or `generationSource: "Cache"` → non-blocking status notice is shown.
 
-### Error traceId
+> Cache is **never** inferred from `durationSeconds` or `confidenceScore`.
 
-When the backend returns a `traceId` on error, it is displayed as `Reference: <traceId>` for support purposes. Stack traces are never exposed in the UI.
+### Error Reference ID
 
----
-
-## Feature documentation
-
-### Retailer area
-
-Retailer pages live under `src/features/retailer`, mounted at `/retailer`.
-
-Current capabilities: dashboard KPIs/charts, product management, inventory, categories, offers, orders, subscription lifecycle, payment methods, profile/settings, and notifications.
-
-### Customer area
-
-Customer pages live under `src/features/customer`, mounted at `/customer`.
-
-Current capabilities:
-
-- Auth, onboarding, and password recovery.
-- Shop, product details, and filtering.
-- Favorites, compare, and product components.
-- Account profile and address book.
-- Avatar flows: manual measurements, photo-based extraction (with staged progress), and source-image repair.
-- **Virtual try-on** with 3D model viewer and 2D image overlay, mode auto-correction, and in-flight state management.
-- Cart and checkout.
-- Outfits, AI wardrobe suggestions, and wardrobe collections.
-- Static pages (about, shipping/returns, blog).
-
-### Shared UI and styling
-
-- Global styles: `src/app/globals.css`.
-- Shared layouts: `src/components/layout`.
-- UI primitives: `src/components/ui`.
-- Customer theme tokens: `src/features/customer/styles/customerTheme.ts`.
+When backend returns a `traceId` → displayed as `Reference: <traceId>` for support. No stack traces are exposed.
 
 ---
 
-## Testing strategy
-
-The repository uses **Vitest** with jsdom and React Testing Library.
+## 🧪 Testing Strategy
 
 ```
-51 test files · 486 tests · all passing
+📁 51 test files   ·   ✅ 486 tests passing
 ```
 
-Coverage includes:
+**Framework:** Vitest + jsdom + React Testing Library + jest-dom
 
-- Axios/token-refresh helpers and auth store persistence.
-- Customer API adapters (avatar, catalog, favorites, outfits, suggestions, wardrobe collections, try-on).
-- Customer pages (home, shop, product details, favorites, avatar flows, try-on 3D/2D, cart, checkout, AI suggestions, outfits, compare, password flows, static pages).
-- **AI cost-control layer** (duplicate guard, cache notice, error codes, traceId, Overlay2D gating, `resultImageUrl` fallback, `canUse2DTryOn` with `sourceImageUrl`).
-- Retailer API/query adapters and subscription plan-change utilities.
-- Route constants and customer route param helpers.
+<details>
+<summary><b>Coverage areas</b></summary>
+
+| Area | Coverage |
+|------|---------|
+| Axios client & token refresh | ✅ |
+| Auth store persistence | ✅ |
+| Customer API adapters (avatar, catalog, favorites, try-on…) | ✅ |
+| Customer pages (home, shop, avatar, try-on, cart, checkout…) | ✅ |
+| AI cost-control layer (duplicate guard, cache notice, error codes, traceId) | ✅ |
+| `resultImageUrl` fallback for 3D | ✅ |
+| `canUse2DTryOn` with `sourceImageUrl` | ✅ |
+| `Overlay2D` sent only on explicit 2D selection | ✅ |
+| Retailer API/query adapters | ✅ |
+| Subscription plan-change utilities | ✅ |
+| Route constants & query-param helpers | ✅ |
+
+</details>
 
 ```bash
-# Run all tests
-npm test
-
-# Lint
-npm run lint
-
-# Production build
-npm run build
+npm test          # run all tests
+npm run lint      # lint the codebase
+npm run build     # production build
 ```
 
 ---
 
-## Development conventions
+## 📏 Development Conventions
 
-- Add new route entries in `src/app/routes/router.tsx`.
-- Add reusable path constants for customer routes in `src/features/customer/routes/customerRoutes.ts`.
-- Keep backend calls in feature-level `api/*.ts` modules.
-- Keep TanStack Query wrappers in feature-level `queries/*.ts` modules.
-- Keep TypeScript types close to their domain in `types/*.ts`.
-- Use the shared `apiClient`; do not create ad hoc Axios instances.
-- When sending `FormData`, let `apiClient` remove the JSON content type automatically.
-- Prefer feature-local tests next to the code being tested.
-- **Never add third-party AI provider keys to the frontend** — all paid AI calls must go through the backend.
+- 📁 New routes → `src/app/routes/router.tsx`
+- 🔑 Customer route constants → `src/features/customer/routes/customerRoutes.ts`
+- 📡 Backend calls → feature-level `api/*.ts` modules
+- 🔄 Data fetching → feature-level `queries/*.ts` with TanStack Query
+- 🏷️ Types → `types/*.ts` close to their domain
+- 🌐 Always use the shared `apiClient` — no ad hoc Axios instances
+- 📤 `FormData` uploads → let `apiClient` strip `Content-Type` automatically
+- 🧪 Tests → co-located next to the feature code
+- ⛔ **Never** add third-party AI provider keys to the frontend
 
 ---
 
-## Project status
+## 📊 Project Status
 
-| Area | Status |
-|------|--------|
-| Retailer dashboard | ✅ Implemented |
-| Customer storefront | ✅ Implemented |
-| Virtual try-on (3D + 2D) | ✅ Implemented |
-| Photo avatar extraction | ✅ Implemented |
-| AI cost-control & security | ✅ Implemented |
-| Backend contract alignment | ✅ Aligned with `TryOnResultDto` + `AvatarDto` |
-| Admin portal | 🔲 Placeholder only |
+| Area | Status | Notes |
+|------|:------:|-------|
+| 🏪 Retailer dashboard | ✅ | Full CRUD, analytics, subscription lifecycle |
+| 🛍️ Customer storefront | ✅ | Shop, favorites, compare, cart, checkout |
+| 🪞 Virtual try-on (3D + 2D) | ✅ | Mode auto-correction, in-flight guard |
+| 📸 Photo avatar extraction | ✅ | Staged progress, field validation |
+| 🤖 AI wardrobe suggestions | ✅ | Query + cost-control safeguards |
+| 🛡️ AI cost-control & security | ✅ | inFlight guard, error codes, cache notice |
+| 📡 Backend contract alignment | ✅ | Aligned with `TryOnResultDto` + `AvatarDto` |
+| 🔧 Admin portal | 🔲 | Placeholder route only |
+
+---
+
+<div align="center">
+
+Built with ❤️ using React, TypeScript & Vite
+
+</div>
