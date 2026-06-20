@@ -336,8 +336,9 @@ export const avatarApi = {
   },
   repairSourceImage: async (customerId: string, input: RepairAvatarSourceImageInput): Promise<CustomerAvatar> => {
     const formData = new FormData();
-    formData.append("FrontImageFile", input.frontImageFile);
-    formData.append("RetryGenerate3D", String(input.retryGenerate3D ?? true));
+    // camelCase matches extractFromImage convention; ASP.NET [FromForm] is case-insensitive.
+    formData.append("frontImageFile", input.frontImageFile);
+    formData.append("retryGenerate3D", String(input.retryGenerate3D ?? true));
     const response = await apiClient.post(
       `/api/customers/${customerId}/avatar/repair-source-image`,
       formData,
