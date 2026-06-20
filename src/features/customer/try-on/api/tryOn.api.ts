@@ -13,17 +13,13 @@ type TryOnSessionResponse = Partial<TryOnSession> & {
 type TryOnResultResponse = {
   status?: string | null;
   resultType?: string | null;
-  // 2D try-on result image URL.
   resultImageUrl?: string | null;
-  // 3D try-on result model URL (populated by backend for Model3D sessions).
   resultModelUrl?: string | null;
   recommendedSize?: string | null;
   confidenceScore?: number | null;
   durationSeconds?: number | null;
   traceId?: string | null;
-  // True when the result was served from AiGenerationCache without calling fal.ai.
   isCached?: boolean | null;
-  // The persisted VirtualTryOnSession.Id from the backend.
   sessionId?: string | null;
 };
 
@@ -53,8 +49,6 @@ const normalizeCreatedTryOn = (
   payload: CreateTryOnSessionPayload,
   result: TryOnResultResponse,
 ): TryOnSession => ({
-  // Prefer the server-assigned session ID; fall back to a local ID only if the
-  // backend did not return one (older deployments).
   id: result.sessionId ?? createClientSessionId(payload.productId),
   productId: payload.productId,
   avatarId: payload.avatarId ?? null,
