@@ -160,7 +160,7 @@ export function CustomerTryOnPage() {
   /* Auto-correct mode: if user requested 3D but it's unavailable and 2D is ready, use 2D */
   const effectiveTryOnMode: TryOnMode = tryOnMode === "3d" && !can3D && can2D ? "2d" : tryOnMode;
 
-  /* 3D result: backend now returns the model URL in resultModelUrl (not resultImageUrl). */
+  /* 3D result: backend returns the model URL in resultModelUrl. */
   const resultModelUrl = toSafeModelUrl(state.session?.resultModelUrl) ?? null;
 
   /* In 3D mode: show result if available, else base avatar */
@@ -206,7 +206,6 @@ export function CustomerTryOnPage() {
     if (effectiveTryOnMode === "3d") {
       if (!canUse3DTryOn(avatar.data) || !safeAvatarModelUrl) {
         if (canUse2DTryOn(avatar.data)) {
-          /* effectiveTryOnMode should have already corrected this; guard for edge cases */
           dispatch({ type: "AVATAR_READY", productId: state.productId });
           return;
         }
@@ -877,10 +876,10 @@ export function CustomerTryOnPage() {
                         Result reused from a previous generation.
                       </p>
                     )}
-                    {(state.session?.sizeRecommendation || state.session?.recommendedSize) && (
+                    {state.session?.recommendedSize && (
                       <p className="rounded-xl bg-[#fef7f0] px-4 py-3 text-[14px] font-semibold text-[#2F2925]">
                         Recommended size:{" "}
-                        {state.session.sizeRecommendation ?? state.session.recommendedSize}
+                        {state.session.recommendedSize}
                       </p>
                     )}
                     {effectiveTryOnMode === "3d" && !hasTryOnModel && (
