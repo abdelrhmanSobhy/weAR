@@ -73,7 +73,6 @@ const extractTraceId = (error: unknown): string | null => {
   return null;
 };
 
-const stagedMessages3d = ["Preparing your 3D avatar", "Generating the garment model", "Aligning avatar and garment"];
 const stagedMessages2d = ["Preparing your image", "Overlaying the garment", "Finalising 2D result"];
 
 const LazyTryOn3DViewer = lazy(() => import("@/features/customer/try-on/components/TryOn3DViewer"));
@@ -96,7 +95,8 @@ export function CustomerTryOnPage() {
   const tryOnReturnRoute = initialProductId ? CUSTOMER_ROUTES.tryOnProduct(initialProductId) : CUSTOMER_ROUTES.tryOn;
   const avatarPhotoRoute = appendReturnToCustomerRoute(CUSTOMER_ROUTES.avatarPhoto, tryOnReturnRoute);
 
-  const [tryOnMode, setTryOnMode] = useState<TryOnMode>("3d");
+  // 3D mode is temporarily hidden — locked to 2D (FASHN v1.6)
+  const [tryOnMode] = useState<TryOnMode>("2d");
   const [state, dispatch] = useReducer(tryOnFlowReducer, initialTryOnFlowState(initialProductId, locationState));
   const avatar = useCustomerAvatar();
   const product = useCustomerProduct(state.productId);
@@ -108,7 +108,7 @@ export function CustomerTryOnPage() {
   const [repairApiError, setRepairApiError] = useState<string | null>(null);
   const [repairSuccessMsg, setRepairSuccessMsg] = useState<string | null>(null);
   const inFlight = useRef(false);
-  const [stageIndex, setStageIndex] = useReducer((value: number) => (value + 1) % stagedMessages3d.length, 0);
+  const [stageIndex, setStageIndex] = useReducer((value: number) => (value + 1) % stagedMessages2d.length, 0);
   const [viewerStatus, setViewerStatus] = useState<ViewerStatus>("idle");
   const [viewerRetryKey, setViewerRetryKey] = useState(0);
   const [errorTraceId, setErrorTraceId] = useState<string | null>(null);
@@ -119,7 +119,8 @@ export function CustomerTryOnPage() {
   const safeAvatarModelUrl = getSafeActiveAvatarModelUrl(avatar.data);
   const can2D = avatar.isLoading ? true : canUse2DTryOn(avatar.data);
   const can3D = avatar.isLoading ? true : canUse3DTryOn(avatar.data) && !!safeAvatarModelUrl;
-  const effectiveTryOnMode: TryOnMode = tryOnMode === "3d" && !can3D && can2D ? "2d" : tryOnMode;
+  // Always 2D while 3D is hidden
+  const effectiveTryOnMode: TryOnMode = "2d";
   const resultModelUrl = toSafeModelUrl(state.session?.resultModelUrl) ?? null;
   const selected3dModelUrl =
     state.status === "completed-2d" && effectiveTryOnMode === "3d"
@@ -146,32 +147,18 @@ export function CustomerTryOnPage() {
     if (avatar.isLoading) return;
     if (avatar.isError) { dispatch({ type: "RETRYABLE_ERROR", message: extractErrorMessage(avatar.error) }); return; }
 
-    if (effectiveTryOnMode === "3d") {
-      if (!canUse3DTryOn(avatar.data) || !safeAvatarModelUrl) {
-        if (canUse2DTryOn(avatar.data)) { dispatch({ type: "AVATAR_READY", productId: state.productId }); return; }
-        if (!avatar.data) {
-          dispatch({ type: "AVATAR_MISSING", message: "Create a photo-based avatar before trying on products." });
-          navigate(avatarPhotoRoute);
-          return;
-        }
-        dispatch({ type: "AVATAR_MISSING", message: "The current backend try-on pipeline needs a photo-generated 3D avatar before it can apply garments." });
-        navigate(avatarPhotoRoute);
-        return;
-      }
-    } else {
-      if (!avatar.data) {
-        dispatch({ type: "AVATAR_MISSING", message: "A customer avatar record is required before trying on products." });
-        navigate(avatarPhotoRoute);
-        return;
-      }
-      if (!canUse2DTryOn(avatar.data)) {
-        dispatch({ type: "AVATAR_MISSING", message: "Your avatar does not have a source image for 2D try-on. Use the repair option on the Avatar page or recreate your avatar from a photo." });
-        navigate(avatarPhotoRoute);
-        return;
-      }
+    if (!avatar.data) {
+      dispatch({ type: "AVATAR_MISSING", message: "A customer avatar record is required before trying on products." });
+      navigate(avatarPhotoRoute);
+      return;
+    }
+    if (!canUse2DTryOn(avatar.data)) {
+      dispatch({ type: "AVATAR_MISSING", message: "Your avatar does not have a source image for 2D try-on. Use the repair option on the Avatar page or recreate your avatar from a photo." });
+      navigate(avatarPhotoRoute);
+      return;
     }
     dispatch({ type: "AVATAR_READY", productId: state.productId });
-  }, [avatar.data, avatar.error, avatar.isError, avatar.isLoading, avatarPhotoRoute, effectiveTryOnMode, navigate, safeAvatarModelUrl, state.productId, state.status]);
+  }, [avatar.data, avatar.error, avatar.isError, avatar.isLoading, avatarPhotoRoute, navigate, state.productId, state.status]);
 
   const colors = product.data?.colors ?? [];
   const sizes = product.data?.sizes ?? [];
@@ -179,7 +166,7 @@ export function CustomerTryOnPage() {
     (!colors.length || !!state.selectedColor) &&
     (!sizes.length || !!state.selectedSize) &&
     !!state.productId &&
-    (effectiveTryOnMode === "2d" ? canUse2DTryOn(avatar.data) : canUse3DTryOn(avatar.data) && !!safeAvatarModelUrl);
+    canUse2DTryOn(avatar.data);
 
   const submit = () => {
     if (!state.productId || !variantsValid || inFlight.current) return;
@@ -191,7 +178,7 @@ export function CustomerTryOnPage() {
     createSession.mutate(
       {
         productId: state.productId,
-        sessionType: effectiveTryOnMode === "2d" ? TRY_ON_SESSION_TYPES.overlay2D : TRY_ON_SESSION_TYPES.model3D,
+        sessionType: TRY_ON_SESSION_TYPES.overlay2D,
         avatarId: avatar.data?.id ?? null,
       },
       {
@@ -207,7 +194,6 @@ export function CustomerTryOnPage() {
   );
 
   const retryViewer = () => { setViewerStatus("loading"); setViewerRetryKey((v) => v + 1); };
-  const stagedMessages = effectiveTryOnMode === "2d" ? stagedMessages2d : stagedMessages3d;
 
   if (state.status === "entry" || state.status === "checking-avatar") {
     return (
@@ -241,13 +227,7 @@ export function CustomerTryOnPage() {
           <span className="mb-3 inline-block rounded-full bg-white/15 px-4 py-1 text-[13px] font-medium tracking-wide">Virtual Fitting Room</span>
           <h1 className={cn("mt-3 text-[44px] font-normal leading-tight sm:text-[56px]", customerTheme.headingFont)}>Step Behind<br /><em>the Curtain</em></h1>
           <p className="mt-5 text-[16px] leading-relaxed text-white/80">Enter your private fitting experience. Try on any garment with your avatar before you buy.</p>
-          <div className="mt-6 flex justify-center">
-            <div role="group" aria-label="Try-on mode" className="inline-flex rounded-full bg-white/10 p-1 backdrop-blur-sm">
-              <button type="button" aria-pressed={effectiveTryOnMode === "3d"} disabled={!can3D} title={!can3D ? "Your avatar does not have a 3D model yet" : undefined} onClick={() => setTryOnMode("3d")} className={cn("rounded-full px-5 py-2 text-[13px] font-semibold transition-colors disabled:opacity-50", effectiveTryOnMode === "3d" ? "bg-white text-[#6b3120]" : "text-white/80 hover:text-white", customerTheme.focusRing)}>3D Avatar Try-On</button>
-              <button type="button" aria-pressed={effectiveTryOnMode === "2d"} disabled={!can2D} title={!can2D ? "Your avatar does not have a source image for 2D try-on" : undefined} onClick={() => setTryOnMode("2d")} className={cn("rounded-full px-5 py-2 text-[13px] font-semibold transition-colors disabled:opacity-50", effectiveTryOnMode === "2d" ? "bg-white text-[#6b3120]" : "text-white/80 hover:text-white", customerTheme.focusRing)}>2D Image Try-On</button>
-            </div>
-          </div>
-          <button type="button" disabled={state.status === "checking-avatar" || avatar.isLoading} onClick={() => dispatch({ type: "ENTER_ROOM" })} className={cn("mt-6 inline-flex items-center gap-2 rounded-full bg-white px-8 py-3.5 text-[16px] font-semibold text-[#6b3120] transition-opacity hover:opacity-90 disabled:opacity-60", customerTheme.focusRing)}>
+          <button type="button" disabled={state.status === "checking-avatar" || avatar.isLoading} onClick={() => dispatch({ type: "ENTER_ROOM" })} className={cn("mt-8 inline-flex items-center gap-2 rounded-full bg-white px-8 py-3.5 text-[16px] font-semibold text-[#6b3120] transition-opacity hover:opacity-90 disabled:opacity-60", customerTheme.focusRing)}>
             <Sparkles className="h-5 w-5" />{state.status === "checking-avatar" ? "Checking avatar…" : "Enter Room"}
           </button>
         </div>
@@ -263,48 +243,27 @@ export function CustomerTryOnPage() {
       {tryOnCartMessage && (<p className="rounded-xl border border-[#e8ddd5] bg-[#fef7f0] px-4 py-3 text-[14px] text-[#6F625B]" role="status" aria-live="polite">{tryOnCartMessage}</p>)}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button type="button" onClick={() => navigate(returnTo)} className={cn("flex items-center gap-2 rounded-full border border-[#e8ddd5] bg-white px-4 py-2 text-[14px] text-[#6F625B] hover:border-[#9c6b54] hover:text-[#9c6b54] transition-colors", customerTheme.focusRing)}><ArrowLeft className="h-4 w-4" />Back</button>
-        <div role="group" aria-label="Try-on mode" className="inline-flex rounded-full border border-[#e8ddd5] bg-white p-1">
-          <button type="button" aria-pressed={effectiveTryOnMode === "3d"} disabled={!can3D} title={!can3D ? "Your avatar does not have a 3D model yet" : undefined} onClick={() => { if (effectiveTryOnMode !== "3d") { setTryOnMode("3d"); dispatch({ type: "RESET_ENTRY" }); } }} className={cn("rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors disabled:opacity-50", effectiveTryOnMode === "3d" ? "bg-[#9c6b54] text-white" : "text-[#6F625B] hover:text-[#9c6b54]", customerTheme.focusRing)}>3D Avatar</button>
-          <button type="button" aria-pressed={effectiveTryOnMode === "2d"} disabled={!can2D} title={!can2D ? "Your avatar does not have a source image for 2D try-on" : undefined} onClick={() => { if (effectiveTryOnMode !== "2d") { setTryOnMode("2d"); dispatch({ type: "RESET_ENTRY" }); } }} className={cn("rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors disabled:opacity-50", effectiveTryOnMode === "2d" ? "bg-[#9c6b54] text-white" : "text-[#6F625B] hover:text-[#9c6b54]", customerTheme.focusRing)}>2D Image</button>
-        </div>
         <Link to={CUSTOMER_ROUTES.shop} className={cn("text-[14px] font-medium text-[#9c6b54] hover:text-[#954c2a]", customerTheme.focusRing)}>Change Product</Link>
       </div>
 
       <div className="relative overflow-hidden rounded-3xl" style={{ background: "linear-gradient(135deg, #f5ede6 0%, #edddd0 50%, #e4cfc0 100%)" }}>
         <div className={cn("grid gap-6 p-5 sm:p-8 lg:grid-cols-[1fr_360px]", isProcessing && "blur-sm brightness-90")}>
+          {/* 2D viewer */}
           <div className="flex min-h-[420px] items-stretch overflow-hidden rounded-2xl bg-white/40 backdrop-blur-sm" style={{ border: "1px solid rgba(156,107,84,0.15)" }}>
-            {effectiveTryOnMode === "3d" ? (
-              selected3dModelUrl ? (
-                <div className="flex w-full flex-col">
-                  <p className="px-4 pt-3 text-[12px] font-semibold uppercase tracking-widest text-[#9c6b54]">{hasTryOnModel ? "3D garment try-on result" : "Your 3D avatar"}</p>
-                  <div className="flex-1">
-                    <Suspense fallback={<div className="flex h-full items-center justify-center p-10 text-center" role="status" aria-live="polite"><p className={cn("text-[16px] font-normal text-[#9c6b54]", customerTheme.headingFont)}>Loading 3D view…</p></div>}>
-                      <TryOnViewerErrorBoundary resetKey={viewerRetryKey} onError={() => setViewerStatus("error")} fallback={<div className="p-6" role="alert"><p className="font-semibold text-[#2F2925]">3D view is unavailable.</p><button type="button" onClick={retryViewer} className={cn("mt-3 rounded-xl border border-[#9c6b54] px-4 py-2 text-[13px] font-medium text-[#9c6b54]", customerTheme.focusRing)}>Retry 3D</button></div>}>
-                        <LazyTryOn3DViewer key={`${viewerRetryKey}-${selected3dModelUrl}`} modelUrl={selected3dModelUrl} label={hasTryOnModel ? "3D garment try-on result" : "Your 3D avatar"} onLoading={() => setViewerStatus("loading")} onReady={() => setViewerStatus("ready")} onError={() => setViewerStatus("error")} />
-                      </TryOnViewerErrorBoundary>
-                    </Suspense>
-                    {viewerStatus === "error" && (<div role="alert" className="rounded-xl bg-[#fef7f0] p-4 text-[13px]"><p className="font-semibold text-[#2F2925]">3D view is unavailable.</p><button type="button" onClick={retryViewer} className={cn("mt-2 rounded-lg border border-[#9c6b54] px-3 py-1.5 text-[#9c6b54]", customerTheme.focusRing)}>Retry 3D</button></div>)}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex w-full items-center justify-center p-8 text-center text-[#9c6b54]"><div><Shirt className="mx-auto h-20 w-20 opacity-40" /><p className={cn("mt-4 text-[20px] font-normal", customerTheme.headingFont)}>Your fitting room</p><p className="mt-2 text-[14px] text-[#9c6b54]/70">Create a photo avatar to see your 3D preview here</p></div></div>
-              )
-            ) : (
-              <div className="flex w-full flex-col">
-                <p className="px-4 pt-3 text-[12px] font-semibold uppercase tracking-widest text-[#9c6b54]">{isCompleted ? "2D try-on result" : "2D preview"}</p>
-                <div className="flex flex-1 items-center justify-center p-4">
-                  {isCompleted && result2dModelUrl ? (
-                    <div className="rounded-2xl bg-white/60 p-8 text-center text-[#9c6b54]"><p className="font-medium text-[15px]">3D model result available.</p><a href={result2dModelUrl} target="_blank" rel="noopener noreferrer" className={cn("mt-3 inline-block text-[14px] underline hover:opacity-80", customerTheme.focusRing)}>Open 3D model</a></div>
-                  ) : isCompleted && result2dImageUrl ? (
-                    <img src={result2dImageUrl} alt="2D try-on result" className="max-h-[560px] w-full rounded-xl object-contain" />
-                  ) : avatar2dPreviewUrl ? (
-                    <img src={avatar2dPreviewUrl} alt="Your 2D avatar preview" className="max-h-[560px] w-full rounded-xl object-contain" />
-                  ) : (
-                    <div className="rounded-2xl bg-white/60 p-8 text-center text-[#9c6b54]"><Shirt className="mx-auto h-16 w-16 opacity-40" /><p className="mt-4 text-[15px] font-medium">2D preview will appear after generation.</p><p className="mt-2 text-[13px] text-[#9c6b54]/70">The backend must support 2D try-on.</p></div>
-                  )}
-                </div>
+            <div className="flex w-full flex-col">
+              <p className="px-4 pt-3 text-[12px] font-semibold uppercase tracking-widest text-[#9c6b54]">{isCompleted ? "Try-on result" : "Your photo preview"}</p>
+              <div className="flex flex-1 items-center justify-center p-4">
+                {isCompleted && result2dModelUrl ? (
+                  <div className="rounded-2xl bg-white/60 p-8 text-center text-[#9c6b54]"><p className="font-medium text-[15px]">3D model result available.</p><a href={result2dModelUrl} target="_blank" rel="noopener noreferrer" className={cn("mt-3 inline-block text-[14px] underline hover:opacity-80", customerTheme.focusRing)}>Open 3D model</a></div>
+                ) : isCompleted && result2dImageUrl ? (
+                  <img src={result2dImageUrl} alt="Try-on result" className="max-h-[560px] w-full rounded-xl object-contain" />
+                ) : avatar2dPreviewUrl ? (
+                  <img src={avatar2dPreviewUrl} alt="Your photo preview" className="max-h-[560px] w-full rounded-xl object-contain" />
+                ) : (
+                  <div className="rounded-2xl bg-white/60 p-8 text-center text-[#9c6b54]"><Shirt className="mx-auto h-16 w-16 opacity-40" /><p className="mt-4 text-[15px] font-medium">Your try-on result will appear here.</p></div>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           <aside className="space-y-5 rounded-2xl border border-[#e8ddd5] bg-white p-5" aria-label="Selected product panel">
@@ -313,7 +272,6 @@ export function CustomerTryOnPage() {
               {avatar.data && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium", avatar.data.has2DCapability ? "bg-green-50 text-green-700" : "bg-[#fef7f0] text-[#9c6b54]")}>{avatar.data.has2DCapability ? "2D Ready" : "2D unavailable"}</span>
-                  <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium", avatar.data.has3DCapability ? "bg-green-50 text-green-700" : "bg-[#fef7f0] text-[#9c6b54]")}>{avatar.data.has3DCapability ? "3D Ready" : "3D unavailable"}</span>
                 </div>
               )}
               {avatar.data && !avatar.data.sourceImageUrl && !avatar.data.has2DCapability && (
@@ -324,8 +282,7 @@ export function CustomerTryOnPage() {
                   repairSourceImage.mutate({ frontImageFile: repairFile, retryGenerate3D: repairRetry3D }, {
                     onSuccess: (updated) => {
                       setRepairFile(null);
-                      if (updated.has2DCapability && updated.has3DCapability) setRepairSuccessMsg("2D try-on is now available. 3D try-on is now available too.");
-                      else if (updated.has2DCapability) setRepairSuccessMsg("2D try-on is available. 3D is still unavailable, but you can use 2D now.");
+                      if (updated.has2DCapability) setRepairSuccessMsg("2D try-on is now available.");
                       else setRepairSuccessMsg("Repair complete.");
                     },
                     onError: (err) => {
@@ -372,15 +329,13 @@ export function CustomerTryOnPage() {
                     </div>
                   </fieldset>
                 )}
-                {effectiveTryOnMode === "3d" && !safeAvatarModelUrl && (<p className="rounded-xl bg-[#fef7f0] p-3 text-[13px] text-[#9c6b54]">This backend requires a photo-generated 3D avatar for try-on. Use the photo avatar flow first.</p>)}
-                <button type="button" disabled={!variantsValid || createSession.isPending || isProcessing} onClick={submit} className={cn("flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50", customerTheme.accentBg, customerTheme.focusRing)}><Sparkles className="h-4 w-4" />{effectiveTryOnMode === "2d" ? "Try Product in 2D" : "Try Product in 3D"}</button>
+                <button type="button" disabled={!variantsValid || createSession.isPending || isProcessing} onClick={submit} className={cn("flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50", customerTheme.accentBg, customerTheme.focusRing)}><Sparkles className="h-4 w-4" />Try On</button>
                 {isCompleted && (
                   <div className="space-y-2 border-t border-[#e8ddd5] pt-4">
                     <p className="text-[13px] text-[#9c6b54]">{selectedSummary}</p>
                     {state.session?.isCached === true && (<p className="rounded-xl bg-[#f5f0eb] px-3 py-2 text-[12px] text-[#6F625B]" role="status" data-testid="cache-notice">Result reused from a previous generation.</p>)}
                     {state.session?.recommendedSize && (<p className="rounded-xl bg-[#fef7f0] px-4 py-3 text-[14px] font-semibold text-[#2F2925]">Recommended size: {state.session.recommendedSize}</p>)}
-                    {effectiveTryOnMode === "3d" && !hasTryOnModel && (<p className="rounded-xl bg-[#fef7f0] p-3 text-[13px] text-[#9c6b54]">The backend did not return a 3D result URL for this session; showing base avatar.</p>)}
-                    <button type="button" onClick={() => { addToCart({ productId: product.data.id, productName: product.data.name, productImage: imageFor(product.data), brand: product.data.brand ?? null, unitPrice: product.data.price, discountedPrice: product.data.discountedPrice ?? null, selectedSize: state.selectedSize ?? null, selectedColor: state.selectedColor ?? null, productRoute: CUSTOMER_ROUTES.productDetails(product.data.id), tryOnResultImage: hasTryOnModel ? null : selectedImage }); setTryOnCartMessage(`Added to cart: ${product.data.name}.`); }} className={cn("flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-medium text-white transition-opacity hover:opacity-90", customerTheme.accentBg, customerTheme.focusRing)} aria-label={`Add ${product.data.name} to cart`}><ShoppingBag className="h-4 w-4" />Add to Cart</button>
+                    <button type="button" onClick={() => { addToCart({ productId: product.data.id, productName: product.data.name, productImage: imageFor(product.data), brand: product.data.brand ?? null, unitPrice: product.data.price, discountedPrice: product.data.discountedPrice ?? null, selectedSize: state.selectedSize ?? null, selectedColor: state.selectedColor ?? null, productRoute: CUSTOMER_ROUTES.productDetails(product.data.id), tryOnResultImage: selectedImage }); setTryOnCartMessage(`Added to cart: ${product.data.name}.`); }} className={cn("flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-medium text-white transition-opacity hover:opacity-90", customerTheme.accentBg, customerTheme.focusRing)} aria-label={`Add ${product.data.name} to cart`}><ShoppingBag className="h-4 w-4" />Add to Cart</button>
                     <button type="button" onClick={submit} disabled={createSession.isPending} className={cn("flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#9c6b54] text-[14px] font-medium text-[#9c6b54] transition-colors hover:bg-[#9c6b54] hover:text-white disabled:opacity-50", customerTheme.focusRing)}><RefreshCcw className="h-4 w-4" />Try Again</button>
                     {state.productId && (<button type="button" onClick={() => navigate(CUSTOMER_ROUTES.productDetails(state.productId ?? ""))} className={cn("flex h-11 w-full items-center justify-center rounded-xl border border-[#e8ddd5] text-[14px] font-medium text-[#6F625B] hover:border-[#9c6b54] hover:text-[#9c6b54] transition-colors", customerTheme.focusRing)}>Return to Product Details</button>)}
                     <button type="button" onClick={() => navigate(CUSTOMER_ROUTES.shop)} className={cn("flex h-11 w-full items-center justify-center rounded-xl border border-[#e8ddd5] text-[14px] font-medium text-[#6F625B] hover:border-[#9c6b54] hover:text-[#9c6b54] transition-colors", customerTheme.focusRing)}>Change Product</button>
@@ -404,7 +359,7 @@ export function CustomerTryOnPage() {
                 <svg width="32" height="32" viewBox="0 0 44 44" fill="none" aria-hidden="true"><g opacity="0.9"><path d="M22 4 L24 18 L22 22 L20 18 Z" fill="#9c6b54" /><path d="M22 40 L24 26 L22 22 L20 26 Z" fill="#9c6b54" /><path d="M4 22 L18 20 L22 22 L18 24 Z" fill="#9c6b54" /><path d="M40 22 L26 20 L22 22 L26 24 Z" fill="#9c6b54" /><circle cx="22" cy="22" r="3.5" fill="#9c6b54" /></g></svg>
               </div>
               <div className="mx-auto mb-4 h-1.5 w-40 overflow-hidden rounded-full bg-[#e8ddd5]"><div className="h-full w-1/2 animate-[slide_1.6s_ease-in-out_infinite] rounded-full bg-[#9c6b54]" /></div>
-              <h2 className={cn("text-[18px] font-normal text-[#2F2925]", customerTheme.headingFont)}>{stagedMessages[stageIndex]}</h2>
+              <h2 className={cn("text-[18px] font-normal text-[#2F2925]", customerTheme.headingFont)}>{stagedMessages2d[stageIndex]}</h2>
               <p className="mt-2 text-[13px] text-[#9c6b54]">{selectedSummary}</p>
             </div>
           </div>
@@ -421,11 +376,22 @@ export function CustomerTryOnPage() {
       )}
       {state.status === "error-avatar-required" && (
         <div className="rounded-2xl border border-[#e8ddd5] bg-white p-5" role="alert">
-          <h2 className={cn("font-semibold text-[#2F2925]", customerTheme.headingFont)}>{effectiveTryOnMode === "3d" ? "3D avatar required" : "Avatar required"}</h2>
-          <p className="mt-1 text-[14px] text-[#6F625B]">{effectiveTryOnMode === "3d" ? "Create or update your avatar from a full-body photo, then return to this fitting room." : "Create a customer avatar, then return to this fitting room."}</p>
+          <h2 className={cn("font-semibold text-[#2F2925]", customerTheme.headingFont)}>Avatar required</h2>
+          <p className="mt-1 text-[14px] text-[#6F625B]">Create a customer avatar from a photo, then return to this fitting room.</p>
           <button type="button" onClick={() => navigate(avatarPhotoRoute)} className={cn("mt-4 rounded-xl bg-[#9c6b54] px-5 py-2.5 text-[14px] font-medium text-white hover:opacity-90", customerTheme.focusRing)}>Create photo avatar</button>
         </div>
       )}
+
+      {/* Preserve unused imports to avoid breaking the build when 3D is re-enabled */}
+      <div className="hidden" aria-hidden="true">
+        {can3D && safeAvatarModelUrl && hasTryOnModel && viewerRetryKey >= 0 && (
+          <Suspense fallback={null}>
+            <TryOnViewerErrorBoundary resetKey={0} onError={() => {}} fallback={null}>
+              <LazyTryOn3DViewer modelUrl={safeAvatarModelUrl} label="" onLoading={() => setViewerStatus("loading")} onReady={() => setViewerStatus("ready")} onError={() => setViewerStatus("error")} />
+            </TryOnViewerErrorBoundary>
+          </Suspense>
+        )}
+      </div>
     </section>
   );
 }
