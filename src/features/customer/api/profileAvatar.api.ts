@@ -59,7 +59,6 @@ type FlatAvatarResponse = {
   waistCm?: number | null;
   hipsCm?: number | null;
   shoulderWidthCm?: number | null;
-  shoulderCm?: number | null;
   inseamCm?: number | null;
   neckCm?: number | null;
   armLengthCm?: number | null;
@@ -145,11 +144,9 @@ const mapFlatAvatarToCustomerAvatar = (
   customerId: string,
 ): CustomerAvatar => {
   const sourceImageUrl = avatar.sourceImageUrl ?? null;
-  const has2DCapability =
-    avatar.has2DCapability ??
-    Boolean(sourceImageUrl || avatar.avatar2dImageUrl || avatar.avatarFrontImageUrl);
-  const has3DCapability =
-    avatar.has3DCapability ?? Boolean(avatar.avatar3dModelUrl);
+  // Respect backend's authoritative has2DCapability; only fall back if backend omits the field entirely.
+  const has2DCapability = avatar.has2DCapability ?? Boolean(sourceImageUrl);
+  const has3DCapability = avatar.has3DCapability ?? Boolean(avatar.avatar3dModelUrl);
 
   return {
     id: avatar.id,
@@ -161,10 +158,7 @@ const mapFlatAvatarToCustomerAvatar = (
         chestCm: avatar.chestCm ?? null,
         waistCm: avatar.waistCm ?? null,
         hipsCm: avatar.hipsCm ?? null,
-        shoulderCm:
-          avatar.shoulderCm ??
-          avatar.shoulderWidthCm ??
-          null,
+        shoulderCm: avatar.shoulderWidthCm ?? null,
         inseamCm: avatar.inseamCm ?? null,
         neckCm: avatar.neckCm ?? null,
         armLengthCm: avatar.armLengthCm ?? null,

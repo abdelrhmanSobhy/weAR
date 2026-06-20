@@ -10,6 +10,8 @@ import type {
   CustomerProduct,
 } from "@/features/customer/types/catalog";
 
+type ToggleFavoriteResponse = { isFavorite: boolean };
+
 export const favoritesApi = {
   getFavorites: async (customerId: string) => {
     const response = await apiClient.get(
@@ -21,24 +23,26 @@ export const favoritesApi = {
   toggleFavorite: async (
     customerId: string,
     payload: FavoriteTogglePayload,
-  ) => {
+  ): Promise<ToggleFavoriteResponse> => {
     const response = await apiClient.post(
       `/api/customers/${customerId}/favorites/toggle`,
       payload,
     );
-    return unwrapCustomerApiData<CustomerProduct | FavoriteCheckResult>(
-      response.data,
-    );
+    return unwrapCustomerApiData<ToggleFavoriteResponse>(response.data);
   },
 
   checkFavorites: async (
     customerId: string,
     payload: FavoriteCheckPayload,
-  ) => {
+  ): Promise<FavoriteCheckResult[]> => {
     const response = await apiClient.post(
       `/api/customers/${customerId}/favorites/check`,
       payload,
     );
-    return unwrapCustomerApiData<FavoriteCheckResult[]>(response.data);
+    const raw = unwrapCustomerApiData<Record<string, boolean>>(response.data);
+    return Object.entries(raw).map(([productId, isFavorite]): FavoriteCheckResult => ({
+      productId,
+      isFavorite,
+    }));
   },
 };

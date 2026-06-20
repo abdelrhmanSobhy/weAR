@@ -7,14 +7,18 @@ export interface CustomerAccountProfile {
   fullName: string;
   email: string;
   phoneNumber?: string | null;
-  age?: number | null;
+  /** ISO date string "YYYY-MM-DD" from backend DateOfBirth */
+  dateOfBirth?: string | null;
   gender?: "Male" | "Female" | string | null;
+  status?: string | null;
+  avatarUrl?: string | null;
 }
 
 export interface UpdateCustomerProfilePayload {
   fullName: string;
   phoneNumber?: string | null;
-  age?: number | null;
+  /** ISO date string "YYYY-MM-DD" — maps to backend DateOfBirth */
+  dateOfBirth?: string | null;
   gender?: string | null;
 }
 
@@ -104,9 +108,6 @@ export interface CustomerAvatar {
   sourceImageUrl?: string | null;
   has2DCapability: boolean;
   has3DCapability: boolean;
-  generationSource?: string | null;
-  isCached?: boolean | null;
-  message?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

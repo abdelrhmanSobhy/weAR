@@ -16,8 +16,9 @@ export interface CreateTryOnSessionPayload {
   avatarId?: string | null;
 }
 
+/** True only when backend has confirmed 2D capability via has2DCapability flag */
 export const canUse2DTryOn = (avatar: CustomerAvatar | null | undefined): boolean =>
-  Boolean(avatar?.has2DCapability) || Boolean(avatar?.sourceImageUrl);
+  Boolean(avatar?.has2DCapability);
 
 export const canUse3DTryOn = (avatar: CustomerAvatar | null | undefined): boolean =>
   Boolean(avatar?.has3DCapability);
@@ -39,13 +40,8 @@ export interface TryOnSession {
   resultType?: TryOnResultType | null;
   resultImageUrl?: string | null;
   resultModelUrl?: string | null;
-  avatar3dModelUrl?: string | null;
-  result3dModelUrl?: string | null;
-  model3dUrl?: string | null;
   traceId?: string | null;
-  generationSource?: string | null;
   isCached?: boolean | null;
-  sizeRecommendation?: string | null;
   recommendedSize?: string | null;
   confidenceScore?: number | null;
   durationSeconds?: number | null;
