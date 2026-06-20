@@ -62,6 +62,12 @@ const extractErrorMessage = (error: unknown): string => {
     if (code === "EXTERNAL_SERVICE_ERROR") {
       return "The try-on service is temporarily unavailable. Please try again shortly.";
     }
+    if (code === "TryOn2DSourceImageMissing") {
+      return "Your avatar has no source image for 2D try-on. Use the repair option below or recreate your avatar from a photo.";
+    }
+    if (code === "TryOn3DAvatarRequired" || code === "TryOn3DSourceImageMissing") {
+      return "A 3D avatar with a source photo is required for 3D try-on. Please recreate your avatar from a photo.";
+    }
     if (typeof backendMessage === "string" && backendMessage.trim()) return backendMessage;
     if (status === 401) return "Your session expired. Please sign in again to continue.";
     if (status === 403) return "This try-on is not available for the signed-in customer.";
@@ -154,10 +160,8 @@ export function CustomerTryOnPage() {
   /* Auto-correct mode: if user requested 3D but it's unavailable and 2D is ready, use 2D */
   const effectiveTryOnMode: TryOnMode = tryOnMode === "3d" && !can3D && can2D ? "2d" : tryOnMode;
 
-  /* prefer resultModelUrl, fall back to resultImageUrl for backwards compat */
-  const resultModelUrl =
-    toSafeModelUrl(state.session?.resultModelUrl) ??
-    toSafeModelUrl(state.session?.resultImageUrl);
+  /* 3D result: backend now returns the model URL in resultModelUrl (not resultImageUrl). */
+  const resultModelUrl = toSafeModelUrl(state.session?.resultModelUrl) ?? null;
 
   /* In 3D mode: show result if available, else base avatar */
   const selected3dModelUrl =
@@ -868,7 +872,7 @@ export function CustomerTryOnPage() {
                 {isCompleted && (
                   <div className="space-y-2 border-t border-[#e8ddd5] pt-4">
                     <p className="text-[13px] text-[#9c6b54]">{selectedSummary}</p>
-                    {(state.session?.isCached || state.session?.generationSource === "Cache") && (
+                    {state.session?.isCached === true && (
                       <p className="rounded-xl bg-[#f5f0eb] px-3 py-2 text-[12px] text-[#6F625B]" role="status" data-testid="cache-notice">
                         Result reused from a previous generation.
                       </p>

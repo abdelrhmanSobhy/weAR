@@ -13,13 +13,19 @@ type TryOnSessionResponse = Partial<TryOnSession> & {
 type TryOnResultResponse = {
   status?: string | null;
   resultType?: string | null;
+  // 2D try-on result image URL.
   resultImageUrl?: string | null;
+  // 3D try-on result model URL (populated by backend for Model3D sessions).
   resultModelUrl?: string | null;
   recommendedSize?: string | null;
   sizeRecommendation?: string | null;
   confidenceScore?: number | null;
   durationSeconds?: number | null;
   traceId?: string | null;
+  // True when the result was served from AiGenerationCache without calling fal.ai.
+  isCached?: boolean | null;
+  // The persisted VirtualTryOnSession.Id from the backend.
+  sessionId?: string | null;
 };
 
 type TryOnSessionsPage = Partial<PaginatedCustomerResponse<TryOnSessionResponse>>;
@@ -34,6 +40,7 @@ const normalizeTryOnSession = (session: TryOnSessionResponse): TryOnSession => (
   sessionType: session.sessionType,
   status: session.status ?? null,
   resultImageUrl: session.resultImageUrl ?? null,
+  resultModelUrl: session.resultModelUrl ?? null,
   recommendedSize: session.recommendedSize ?? session.sizeRecommendation ?? null,
   confidenceScore: session.confidenceScore ?? null,
   durationSeconds: session.durationSeconds ?? null,
@@ -47,7 +54,9 @@ const normalizeCreatedTryOn = (
   payload: CreateTryOnSessionPayload,
   result: TryOnResultResponse,
 ): TryOnSession => ({
-  id: createClientSessionId(payload.productId),
+  // Prefer the server-assigned session ID; fall back to a local ID only if the
+  // backend did not return one (older deployments).
+  id: result.sessionId ?? createClientSessionId(payload.productId),
   productId: payload.productId,
   avatarId: payload.avatarId ?? null,
   sessionType: payload.sessionType,
@@ -55,6 +64,7 @@ const normalizeCreatedTryOn = (
   resultType: result.resultType ?? null,
   resultImageUrl: result.resultImageUrl ?? null,
   resultModelUrl: result.resultModelUrl ?? null,
+  isCached: result.isCached ?? null,
   recommendedSize: result.recommendedSize ?? result.sizeRecommendation ?? null,
   traceId: result.traceId ?? null,
   confidenceScore: result.confidenceScore ?? null,
