@@ -43,9 +43,8 @@ export interface TryOnSession {
   result3dModelUrl?: string | null;
   model3dUrl?: string | null;
   traceId?: string | null;
-  generationSource?: string | null;
   isCached?: boolean | null;
-  sizeRecommendation?: string | null;
+  // Unified size recommendation field — backend returns recommendedSize only.
   recommendedSize?: string | null;
   confidenceScore?: number | null;
   durationSeconds?: number | null;

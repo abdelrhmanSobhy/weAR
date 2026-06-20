@@ -58,8 +58,8 @@ type FlatAvatarResponse = {
   chestCm?: number | null;
   waistCm?: number | null;
   hipsCm?: number | null;
+  // Backend field name; mapped to internal shoulderCm below.
   shoulderWidthCm?: number | null;
-  shoulderCm?: number | null;
   inseamCm?: number | null;
   neckCm?: number | null;
   armLengthCm?: number | null;
@@ -130,6 +130,7 @@ const toBackendAvatarMeasurements = (
     chestCm: measurements.chestCm ?? null,
     waistCm: measurements.waistCm ?? null,
     hipsCm: measurements.hipsCm ?? null,
+    // Internal field is shoulderCm; backend expects shoulderWidthCm.
     shoulderWidthCm: measurements.shoulderCm ?? null,
     inseamCm: measurements.inseamCm ?? null,
     neckCm: measurements.neckCm ?? null,
@@ -161,10 +162,8 @@ const mapFlatAvatarToCustomerAvatar = (
         chestCm: avatar.chestCm ?? null,
         waistCm: avatar.waistCm ?? null,
         hipsCm: avatar.hipsCm ?? null,
-        shoulderCm:
-          avatar.shoulderCm ??
-          avatar.shoulderWidthCm ??
-          null,
+        // Backend returns shoulderWidthCm; map to internal shoulderCm.
+        shoulderCm: avatar.shoulderWidthCm ?? null,
         inseamCm: avatar.inseamCm ?? null,
         neckCm: avatar.neckCm ?? null,
         armLengthCm: avatar.armLengthCm ?? null,

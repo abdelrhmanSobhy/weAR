@@ -18,7 +18,6 @@ type TryOnResultResponse = {
   // 3D try-on result model URL (populated by backend for Model3D sessions).
   resultModelUrl?: string | null;
   recommendedSize?: string | null;
-  sizeRecommendation?: string | null;
   confidenceScore?: number | null;
   durationSeconds?: number | null;
   traceId?: string | null;
@@ -41,7 +40,7 @@ const normalizeTryOnSession = (session: TryOnSessionResponse): TryOnSession => (
   status: session.status ?? null,
   resultImageUrl: session.resultImageUrl ?? null,
   resultModelUrl: session.resultModelUrl ?? null,
-  recommendedSize: session.recommendedSize ?? session.sizeRecommendation ?? null,
+  recommendedSize: session.recommendedSize ?? null,
   confidenceScore: session.confidenceScore ?? null,
   durationSeconds: session.durationSeconds ?? null,
   createdAt: session.createdAt ?? null,
@@ -65,7 +64,7 @@ const normalizeCreatedTryOn = (
   resultImageUrl: result.resultImageUrl ?? null,
   resultModelUrl: result.resultModelUrl ?? null,
   isCached: result.isCached ?? null,
-  recommendedSize: result.recommendedSize ?? result.sizeRecommendation ?? null,
+  recommendedSize: result.recommendedSize ?? null,
   traceId: result.traceId ?? null,
   confidenceScore: result.confidenceScore ?? null,
   durationSeconds: result.durationSeconds ?? null,
