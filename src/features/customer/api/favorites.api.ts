@@ -34,11 +34,17 @@ export const favoritesApi = {
   checkFavorites: async (
     customerId: string,
     payload: FavoriteCheckPayload,
-  ) => {
+  ): Promise<FavoriteCheckResult[]> => {
     const response = await apiClient.post(
       `/api/customers/${customerId}/favorites/check`,
       payload,
     );
-    return unwrapCustomerApiData<FavoriteCheckResult[]>(response.data);
+    // Backend returns Dictionary<Guid, bool> — JSON shape: { "guid": true, ... }
+    // Convert to the FavoriteCheckResult[] array shape the app expects.
+    const raw = unwrapCustomerApiData<Record<string, boolean>>(response.data);
+    return Object.entries(raw).map(([productId, isFavorite]): FavoriteCheckResult => ({
+      productId,
+      isFavorite,
+    }));
   },
 };
