@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  AlertCircle,
   BookmarkPlus,
   CheckCircle2,
   ExternalLink,
+  ImageIcon,
   Loader2,
   Sparkles,
   Wand2,
@@ -12,149 +14,174 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { customerTheme } from "@/features/customer/styles/customerTheme";
 import { CUSTOMER_ROUTES } from "@/features/customer/routes/customerRoutes";
+import { catalogApi } from "@/features/customer/api/catalog.api";
 import type { AiSuggestion, AiSuggestionProduct } from "@/features/customer/types/catalog";
+import type { CustomerProduct } from "@/features/customer/types/catalog";
 import { useLocalOutfitStore } from "@/features/customer/fixtures/localOutfitStore";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// Image URLs — Unsplash CDN, w=300 h=400 for card previews
+// Product classification
 // ---------------------------------------------------------------------------
 
-const IMG = {
-  linenShirt:    "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=300&h=400&fit=crop&auto=format",
-  poloShirt:     "https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=300&h=400&fit=crop&auto=format",
-  dressShirt:    "https://images.unsplash.com/photo-1602810318-87e37f0358f6?w=300&h=400&fit=crop&auto=format",
-  graphicTee:    "https://images.unsplash.com/photo-1523381294911-8d3cead13475?w=300&h=400&fit=crop&auto=format",
-  floralBlouse:  "https://images.unsplash.com/photo-1583744946564-b52ac1c389c8?w=300&h=400&fit=crop&auto=format",
-  knitSweater:   "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=300&h=400&fit=crop&auto=format",
-  chinos:        "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=300&h=400&fit=crop&auto=format",
-  jeans:         "https://images.unsplash.com/photo-1542272604-787c3835535d?w=300&h=400&fit=crop&auto=format",
-  trousers:      "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?w=300&h=400&fit=crop&auto=format",
-  wideLegPants:  "https://images.unsplash.com/photo-1594938298603-c8148c4b4f40?w=300&h=400&fit=crop&auto=format",
-  whiteSneakers: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=400&fit=crop&auto=format",
-  loafers:       "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=300&h=400&fit=crop&auto=format",
-  oxfords:       "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=300&h=400&fit=crop&auto=format",
-  heels:         "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=300&h=400&fit=crop&auto=format",
-  sandals:       "https://images.unsplash.com/photo-1603487742131-4160ec999306?w=300&h=400&fit=crop&auto=format",
-  blazer:        "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=300&h=400&fit=crop&auto=format",
-  midDress:      "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=300&h=400&fit=crop&auto=format",
-  floralDress:   "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=300&h=400&fit=crop&auto=format",
-};
+type ProductSlot = "dress" | "top" | "bottom" | "shoes" | "outerwear";
 
-// ---------------------------------------------------------------------------
-// Mock suggestion data — 6 varied outfits, no accessories
-// ---------------------------------------------------------------------------
+function classifyProduct(product: CustomerProduct): ProductSlot | null {
+  const text = [product.name, product.categoryName, product.subcategoryName, product.description]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 
-function p(
-  id: string,
+  if (/\b(dress|gown|jumpsuit|romper|playsuit|maxi|midi|mini)\b/.test(text)) return "dress";
+  if (/\b(jacket|blazer|coat|cardigan|hoodie|outerwear)\b/.test(text)) return "outerwear";
+  if (/\b(top|blouse|shirt|tee|t-shirt|sweater|pullover|crop|cami|tank)\b/.test(text)) return "top";
+  if (/\b(pant|jean|trouser|skirt|shorts|legging|culotte)\b/.test(text)) return "bottom";
+  if (/\b(shoe|sneaker|heel|sandal|boot|loafer|flat|pump|stiletto|mule|wedge)\b/.test(text)) return "shoes";
+  return null;
+}
+
+function toAiProduct(
+  product: CustomerProduct,
   slot: string,
   slotType: number,
-  name: string,
-  price: number,
-  img: string,
 ): AiSuggestionProduct {
   return {
-    id,
-    productId: id,
-    modelId: null,
+    id: product.id,
+    productId: product.id,
+    modelId: product.modelId ?? null,
     slotType,
     slot,
     displayOrder: slotType,
     reasoning: null,
-    description: null,
-    name,
-    price,
-    primaryImageUrl: img,
-    stockStatus: "In Stock",
+    description: product.description ?? null,
+    name: product.name,
+    price: product.discountedPrice ?? product.price,
+    primaryImageUrl: product.primaryImageUrl ?? null,
+    stockStatus: product.stockStatus ?? null,
     resolvedProduct: null,
   };
 }
 
-const MOCK_SUGGESTIONS: AiSuggestion[] = [
+// ---------------------------------------------------------------------------
+// Outfit templates — filled with real products at runtime
+// ---------------------------------------------------------------------------
+
+const TEMPLATES = [
   {
-    suggestionId: "demo-s1",
-    name: "Summer Breeze",
+    name: "Casual Chic",
     styleCategory: "Casual",
-    occasion: "Beach / Outdoor",
-    styleNotes: "Light and effortless — breathable fabrics for warm days.",
+    occasion: "Day Out",
+    styleNotes: "Relaxed yet put-together — effortless feminine style.",
     matchPercentage: 94,
-    styleTags: ["Summer", "Casual", "Minimal"],
-    products: [
-      p("s1-top", "Top",    0, "Linen Button-Up Shirt",  45.00, IMG.linenShirt),
-      p("s1-bot", "Bottom", 1, "White Slim Shorts",       38.00, IMG.chinos),
-      p("s1-sho", "Shoes",  2, "White Canvas Sneakers",   62.00, IMG.whiteSneakers),
+    styleTags: ["Casual", "Feminine", "Effortless"],
+    slots: [
+      { label: "Top",    slotType: 0, from: "top" as ProductSlot },
+      { label: "Bottom", slotType: 1, from: "bottom" as ProductSlot },
+      { label: "Shoes",  slotType: 2, from: "shoes" as ProductSlot },
     ],
   },
   {
-    suggestionId: "demo-s2",
+    name: "Evening Elegance",
+    styleCategory: "Elegant",
+    occasion: "Dinner / Date Night",
+    styleNotes: "Sophisticated and chic — the perfect evening look.",
+    matchPercentage: 96,
+    styleTags: ["Elegant", "Chic", "Feminine"],
+    slots: [
+      { label: "Dress", slotType: 0, from: "dress" as ProductSlot },
+      { label: "Shoes", slotType: 1, from: "shoes" as ProductSlot },
+    ],
+  },
+  {
     name: "Smart Casual",
     styleCategory: "Smart Casual",
     occasion: "Office / Work",
-    styleNotes: "Polished yet relaxed — effortless from desk to dinner.",
+    styleNotes: "Polished and professional without sacrificing style.",
     matchPercentage: 91,
     styleTags: ["Smart", "Polished", "Versatile"],
-    products: [
-      p("s2-top", "Top",    0, "Classic Polo Shirt",     42.00, IMG.poloShirt),
-      p("s2-bot", "Bottom", 1, "Slim Fit Chinos",        55.00, IMG.chinos),
-      p("s2-sho", "Shoes",  2, "Leather Loafers",        79.00, IMG.loafers),
+    slots: [
+      { label: "Top",       slotType: 0, from: "top" as ProductSlot },
+      { label: "Bottom",    slotType: 1, from: "bottom" as ProductSlot },
+      { label: "Outerwear", slotType: 2, from: "outerwear" as ProductSlot },
     ],
   },
   {
-    suggestionId: "demo-s3",
-    name: "Business Ready",
-    styleCategory: "Business Formal",
-    occasion: "Meeting / Presentation",
-    styleNotes: "Sharp and confident — dress for the job you want.",
-    matchPercentage: 88,
-    styleTags: ["Formal", "Professional", "Classic"],
-    products: [
-      p("s3-top", "Top",    0, "Oxford Dress Shirt",     55.00, IMG.dressShirt),
-      p("s3-bot", "Bottom", 1, "Tailored Trousers",      69.00, IMG.trousers),
-      p("s3-out", "Blazer", 2, "Slim Fit Blazer",        99.00, IMG.blazer),
-    ],
-  },
-  {
-    suggestionId: "demo-s4",
-    name: "Street Style",
-    styleCategory: "Urban Casual",
-    occasion: "Weekend / Hangout",
-    styleNotes: "Cool and laid-back — the modern urban wardrobe staple.",
-    matchPercentage: 89,
-    styleTags: ["Streetwear", "Urban", "Trendy"],
-    products: [
-      p("s4-top", "Top",    0, "Graphic Oversized Tee",  35.00, IMG.graphicTee),
-      p("s4-bot", "Bottom", 1, "Blue Slim Jeans",        65.00, IMG.jeans),
-      p("s4-sho", "Shoes",  2, "White Chunky Sneakers",  85.00, IMG.whiteSneakers),
-    ],
-  },
-  {
-    suggestionId: "demo-s5",
-    name: "Evening Glam",
-    styleCategory: "Elegant",
-    occasion: "Dinner / Date Night",
-    styleNotes: "Sophisticated and feminine — effortlessly turns heads.",
-    matchPercentage: 96,
-    styleTags: ["Elegant", "Evening", "Chic"],
-    products: [
-      p("s5-drs", "Dress", 0, "Floral Midi Dress",       79.00, IMG.floralDress),
-      p("s5-sho", "Shoes", 1, "Strappy Heeled Sandals",  95.00, IMG.heels),
-    ],
-  },
-  {
-    suggestionId: "demo-s6",
-    name: "Weekend Chic",
+    name: "Weekend Brunch",
     styleCategory: "Relaxed Chic",
     occasion: "Brunch / Weekend",
-    styleNotes: "Effortlessly put-together without trying too hard.",
-    matchPercentage: 87,
-    styleTags: ["Chic", "Relaxed", "Weekend"],
-    products: [
-      p("s6-top", "Top",    0, "Floral Wrap Blouse",     48.00, IMG.floralBlouse),
-      p("s6-bot", "Bottom", 1, "Wide-Leg Linen Pants",   58.00, IMG.wideLegPants),
-      p("s6-sho", "Shoes",  2, "Strappy Flat Sandals",   45.00, IMG.sandals),
+    styleNotes: "Breezy and stylish — dressed up without the effort.",
+    matchPercentage: 88,
+    styleTags: ["Brunch", "Relaxed", "Chic"],
+    slots: [
+      { label: "Top",    slotType: 0, from: "top" as ProductSlot },
+      { label: "Bottom", slotType: 1, from: "bottom" as ProductSlot },
+      { label: "Shoes",  slotType: 2, from: "shoes" as ProductSlot },
+    ],
+  },
+  {
+    name: "Street Style",
+    styleCategory: "Urban Casual",
+    occasion: "Hangout / Shopping",
+    styleNotes: "Cool and on-trend — the modern wardrobe staple.",
+    matchPercentage: 89,
+    styleTags: ["Streetwear", "Urban", "Trendy"],
+    slots: [
+      { label: "Top",    slotType: 0, from: "top" as ProductSlot },
+      { label: "Bottom", slotType: 1, from: "bottom" as ProductSlot },
+      { label: "Shoes",  slotType: 2, from: "shoes" as ProductSlot },
     ],
   },
 ];
+
+function buildSuggestions(products: CustomerProduct[]): AiSuggestion[] {
+  // Group by slot type, shuffle each group for variety
+  const groups: Record<ProductSlot, CustomerProduct[]> = {
+    dress: [], top: [], bottom: [], shoes: [], outerwear: [],
+  };
+
+  for (const p of products) {
+    const slot = classifyProduct(p);
+    if (slot) groups[slot].push(p);
+  }
+
+  // Shuffle each group
+  for (const key of Object.keys(groups) as ProductSlot[]) {
+    for (let i = groups[key].length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [groups[key][i], groups[key][j]] = [groups[key][j], groups[key][i]];
+    }
+  }
+
+  // Track how many from each group we've used
+  const used: Record<ProductSlot, number> = { dress: 0, top: 0, bottom: 0, shoes: 0, outerwear: 0 };
+  const suggestions: AiSuggestion[] = [];
+
+  for (const tmpl of TEMPLATES) {
+    // Check every required slot has a product available
+    const canFill = tmpl.slots.every(
+      ({ from }) => used[from] < groups[from].length,
+    );
+    if (!canFill) continue;
+
+    const aiProducts: AiSuggestionProduct[] = tmpl.slots.map(({ label, slotType, from }) => {
+      const product = groups[from][used[from]++];
+      return toAiProduct(product, label, slotType);
+    });
+
+    suggestions.push({
+      suggestionId: `demo-${tmpl.name.toLowerCase().replace(/\s+/g, "-")}`,
+      name: tmpl.name,
+      styleCategory: tmpl.styleCategory,
+      occasion: tmpl.occasion,
+      styleNotes: tmpl.styleNotes,
+      matchPercentage: tmpl.matchPercentage,
+      styleTags: tmpl.styleTags,
+      products: aiProducts,
+    });
+  }
+
+  return suggestions;
+}
 
 // ---------------------------------------------------------------------------
 // Product chip
@@ -163,31 +190,30 @@ const MOCK_SUGGESTIONS: AiSuggestion[] = [
 function ProductChip({ product }: { product: AiSuggestionProduct }) {
   const [imgError, setImgError] = useState(false);
   const name = product.name ?? "Product";
-  const price = product.price;
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-[#e8ddd5] bg-[#FAF7F5] px-3 py-2">
-      {product.primaryImageUrl && !imgError ? (
-        <img
-          src={product.primaryImageUrl}
-          alt={name}
-          className="h-14 w-10 shrink-0 rounded-lg object-cover"
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded-lg bg-[#fef7f0] text-[#C4A99A]">
-          <Sparkles className="h-5 w-5" aria-hidden="true" />
-        </div>
-      )}
-      <div className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium text-[#2F2925]">{name}</span>
-        {product.slot && (
-          <span className="text-xs text-[#9c6b54]">{product.slot}</span>
+      <div className="h-14 w-10 shrink-0 overflow-hidden rounded-lg bg-[#fef7f0]">
+        {product.primaryImageUrl && !imgError ? (
+          <img
+            src={product.primaryImageUrl}
+            alt={name}
+            className="h-full w-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-[#C4A99A]">
+            <ImageIcon className="h-4 w-4" aria-hidden="true" />
+          </div>
         )}
       </div>
-      {price !== null && price !== undefined && (
+      <div className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium text-[#2F2925]">{name}</span>
+        {product.slot && <span className="text-xs text-[#9c6b54]">{product.slot}</span>}
+      </div>
+      {product.price !== null && product.price !== undefined && (
         <span className="ml-auto shrink-0 text-xs font-semibold text-[#6F625B]">
-          ${price.toFixed(2)}
+          ${product.price.toFixed(2)}
         </span>
       )}
     </div>
@@ -206,11 +232,6 @@ interface SuggestionCardProps {
 
 function SuggestionCard({ suggestion, index, onSave }: SuggestionCardProps) {
   const [saved, setSaved] = useState(false);
-
-  const handleSave = () => {
-    onSave(suggestion);
-    setSaved(true);
-  };
 
   return (
     <article
@@ -274,7 +295,7 @@ function SuggestionCard({ suggestion, index, onSave }: SuggestionCardProps) {
         <Button
           type="button"
           className="w-full rounded-full bg-[#9c6b54] text-white hover:bg-[#7d5643]"
-          onClick={handleSave}
+          onClick={() => { onSave(suggestion); setSaved(true); }}
           aria-label={`Save suggestion ${index + 1} to outfits`}
         >
           <BookmarkPlus className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -297,7 +318,13 @@ interface GenerateFormValues {
 
 const INITIAL_FORM: GenerateFormValues = { weatherCondition: "", occasion: "", stylePreferences: "" };
 
-function GenerateForm({ onGenerate, isPending }: { onGenerate: (v: GenerateFormValues) => void; isPending: boolean }) {
+function GenerateForm({
+  onGenerate,
+  isPending,
+}: {
+  onGenerate: (v: GenerateFormValues) => void;
+  isPending: boolean;
+}) {
   const [form, setForm] = useState<GenerateFormValues>(INITIAL_FORM);
   const empty = !form.weatherCondition.trim();
 
@@ -360,22 +387,34 @@ export function CustomerAiSuggestionsPage() {
   const addOutfit = useLocalOutfitStore((s) => s.addOutfit);
   const [suggestions, setSuggestions] = useState<AiSuggestion[] | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGenerate = (_values: GenerateFormValues) => {
+  const handleGenerate = async (_values: GenerateFormValues) => {
     setSuggestions(null);
+    setError(null);
     setIsPending(true);
-    setTimeout(() => {
-      setSuggestions(MOCK_SUGGESTIONS);
+
+    try {
+      const result = await catalogApi.getProducts({ pageSize: 50 });
+      const built = buildSuggestions(result.items);
+
+      if (built.length === 0) {
+        setError("Not enough product variety in the catalog to build outfit suggestions. Make sure the shop has tops, bottoms, dresses, and shoes.");
+        return;
+      }
+
+      setSuggestions(built);
+    } catch {
+      setError("Could not load products from the catalog. Make sure the backend is running and try again.");
+    } finally {
       setIsPending(false);
-    }, 1800);
+    }
   };
 
   const handleSave = (suggestion: AiSuggestion) => {
-    // Build slotPreviews from product images so the outfit modal shows photos
     const slotPreviews: Record<string, string | null> = {};
     suggestion.products.forEach((prod) => {
-      const key = String(prod.slotType ?? prod.displayOrder ?? 0);
-      slotPreviews[key] = prod.primaryImageUrl ?? null;
+      slotPreviews[String(prod.slotType ?? prod.displayOrder ?? 0)] = prod.primaryImageUrl ?? null;
     });
     addOutfit(suggestion.name ?? null, suggestion.styleCategory ?? null, slotPreviews);
   };
@@ -387,23 +426,36 @@ export function CustomerAiSuggestionsPage() {
         <h1 className="mt-2 text-4xl font-semibold text-[#2F2925]">AI Outfit Suggestions</h1>
         <p className="mt-2 max-w-2xl text-[#6F625B]">
           Describe your occasion and style preferences, and our AI will curate
-          outfit combinations for you. Save any suggestion directly to your Outfits.
+          outfit combinations from your shop catalog.
         </p>
       </div>
 
-      <GenerateForm onGenerate={handleGenerate} isPending={isPending} />
+      <GenerateForm onGenerate={(v) => void handleGenerate(v)} isPending={isPending} />
+
+      {error && (
+        <div role="alert" className={cn(customerTheme.card, "flex items-start gap-3 p-5")}>
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" aria-hidden="true" />
+          <div>
+            <p className="font-medium text-[#2F2925]">Could not generate suggestions</p>
+            <p className="mt-1 text-sm text-[#6F625B]">{error}</p>
+            <Button type="button" variant="outline" size="sm" className="mt-3 rounded-full" onClick={() => setError(null)}>
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
 
       {isPending && (
         <div className={cn(customerTheme.card, "p-8 text-center")} aria-busy="true">
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-[#9c6b54]" aria-hidden="true" />
-          <p className="mt-4 text-[#6F625B]">Our AI is crafting outfit suggestions for you…</p>
+          <p className="mt-4 text-[#6F625B]">Our AI is selecting outfits from your catalog…</p>
         </div>
       )}
 
-      {suggestions !== null && suggestions.length > 0 && (
+      {suggestions !== null && suggestions.length > 0 && !isPending && (
         <div className="space-y-4">
           <p className="text-sm font-medium text-[#6F625B]">
-            {suggestions.length} suggestions generated
+            {suggestions.length} {suggestions.length === 1 ? "suggestion" : "suggestions"} generated from your catalog
           </p>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {suggestions.map((suggestion, i) => (
@@ -415,6 +467,18 @@ export function CustomerAiSuggestionsPage() {
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {suggestions !== null && suggestions.length === 0 && !isPending && (
+        <div className={cn(customerTheme.card, "p-10 text-center")} role="status">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#fef7f0] text-[#9c6b54]">
+            <Sparkles className="h-7 w-7" aria-hidden="true" />
+          </div>
+          <h2 className="mt-5 text-xl font-semibold text-[#2F2925]">No suggestions found</h2>
+          <p className="mx-auto mt-3 max-w-md text-[#6F625B]">
+            Add more products (tops, bottoms, dresses, shoes) to the catalog to enable outfit suggestions.
+          </p>
         </div>
       )}
     </section>
