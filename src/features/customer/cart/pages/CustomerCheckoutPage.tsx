@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, ImageIcon, MapPin } from "lucide-react";
+import { CheckCircle2, ImageIcon, MapPin, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PriceDisplay } from "@/features/customer/components/product";
 import { CUSTOMER_ROUTES } from "@/features/customer/routes/customerRoutes";
@@ -14,18 +14,65 @@ import type { CustomerAddress } from "@/features/customer/types/profileAvatar";
 
 export function CustomerCheckoutPage() {
   const items = useCartStore((s) => s.items);
+  const clearCart = useCartStore((s) => s.clearCart);
   const user = useAuthStore((s) => s.user);
   const addressesQuery = useCustomerAddresses();
   const addresses: CustomerAddress[] = addressesQuery.data ?? [];
 
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0] ?? null;
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [placedTotal, setPlacedTotal] = useState(0);
+  const [placedAddress, setPlacedAddress] = useState<CustomerAddress | null>(null);
 
   const selectedAddress =
     addresses.find((a) => a.id === selectedAddressId) ?? defaultAddress;
 
   const subtotal = computeSubtotal(items);
   const itemCount = computeItemCount(items);
+
+  const handlePlaceOrder = () => {
+    setPlacedTotal(subtotal);
+    setPlacedAddress(selectedAddress);
+    setOrderPlaced(true);
+    clearCart();
+  };
+
+  if (orderPlaced) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-6 py-24 text-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
+          <CheckCircle2 className="h-10 w-10 text-green-600" aria-hidden="true" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-3xl font-['Playfair_Display'] font-normal text-[#2F2925]">Order placed!</h1>
+          <p className="text-[#6F625B]">
+            Your order of{" "}
+            <span className="font-semibold text-[#2F2925]">
+              ${placedTotal.toFixed(2)}
+            </span>{" "}
+            has been received.
+          </p>
+          {placedAddress && (
+            <p className="text-sm text-[#6F625B]">
+              Ships to {placedAddress.city}, {placedAddress.country}
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Button asChild className={cn("rounded-full bg-[#9c6b54] text-white hover:bg-[#7d5643]", customerTheme.focusRing)}>
+            <Link to={CUSTOMER_ROUTES.shop}>Continue Shopping</Link>
+          </Button>
+          <Button asChild variant="outline" className={cn("rounded-full", customerTheme.focusRing)}>
+            <Link to={CUSTOMER_ROUTES.home}>
+              <ShoppingBag className="mr-2 h-4 w-4" aria-hidden="true" />
+              Home
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -41,15 +88,7 @@ export function CustomerCheckoutPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-['Playfair_Display'] font-normal text-[#2F2925]">Checkout preview</h1>
-
-      {/* Unavailability notice */}
-      <div className={`${customerTheme.softCard} flex gap-3 p-4`} role="note" aria-label="Checkout notice">
-        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#9c6b54]" aria-hidden="true" />
-        <p className="text-sm text-[#4D433D]">
-          <strong>Order submission and payment are not yet available.</strong> This is a preview of your order.
-        </p>
-      </div>
+      <h1 className="text-3xl font-['Playfair_Display'] font-normal text-[#2F2925]">Checkout</h1>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
         <div className="space-y-6">
@@ -180,16 +219,11 @@ export function CustomerCheckoutPage() {
 
           <Button
             type="button"
-            disabled
-            className="w-full cursor-not-allowed rounded-full opacity-60"
-            aria-disabled="true"
+            className={cn("w-full rounded-full bg-[#9c6b54] text-white hover:bg-[#7d5643]", customerTheme.focusRing)}
+            onClick={handlePlaceOrder}
           >
-            Order submission unavailable
+            Place Order
           </Button>
-
-          <p className="text-center text-xs text-[#7d5643]">
-            Payment and order placement will be available in a future update.
-          </p>
 
           <Button asChild variant="outline" className={cn("w-full rounded-full", customerTheme.focusRing)}>
             <Link to={CUSTOMER_ROUTES.cart}>Back to Cart</Link>

@@ -4,6 +4,7 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Eye,
   Heart,
   Layers,
   Plus,
@@ -26,15 +27,93 @@ import type { OutfitSummary, OutfitItem } from "@/features/customer/types/catalo
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
+// Outfit detail modal
+// ---------------------------------------------------------------------------
+
+interface OutfitDetailModalProps {
+  outfit: OutfitSummary;
+  onClose: () => void;
+}
+
+function OutfitDetailModal({ outfit, onClose }: OutfitDetailModalProps) {
+  const previews = outfit.slotPreviews ? Object.values(outfit.slotPreviews) : [];
+  const images = previews.filter((url): url is string => !!url);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={outfit.name ?? "Outfit details"}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className={cn(customerTheme.card, "w-full max-w-lg p-6")}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-['Playfair_Display'] font-normal text-[#2F2925]">
+              {outfit.name ?? "Untitled outfit"}
+            </h2>
+            {outfit.style && (
+              <p className="mt-1 text-sm text-[#9c6b54]">{outfit.style}</p>
+            )}
+            <p className="mt-1 text-sm text-[#6F625B]">
+              {outfit.itemCount} {outfit.itemCount === 1 ? "item" : "items"}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="shrink-0 rounded-full"
+            onClick={onClose}
+            aria-label="Close outfit details"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {images.length > 0 ? (
+          <div className={cn(
+            "grid gap-3",
+            images.length === 1 ? "grid-cols-1" :
+            images.length === 2 ? "grid-cols-2" :
+            "grid-cols-2 sm:grid-cols-3"
+          )}>
+            {images.map((url, i) => (
+              <div key={i} className="overflow-hidden rounded-2xl bg-[#fef7f0]">
+                <img
+                  src={url}
+                  alt={`Outfit item ${i + 1}`}
+                  className="aspect-3/4 w-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex aspect-video items-center justify-center rounded-2xl bg-[#fef7f0]">
+            <Layers className="h-12 w-12 text-[#C4A99A]" aria-hidden="true" />
+            <p className="ml-3 text-sm text-[#6F625B]">No preview images available</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Outfit summary card
 // ---------------------------------------------------------------------------
 
 interface OutfitCardProps {
   outfit: OutfitSummary;
   onDelete: (id: string) => void;
+  onView: (outfit: OutfitSummary) => void;
 }
 
-function OutfitCard({ outfit, onDelete }: OutfitCardProps) {
+function OutfitCard({ outfit, onDelete, onView }: OutfitCardProps) {
   const previews = outfit.slotPreviews ? Object.values(outfit.slotPreviews) : [];
   const visiblePreviews = previews.filter((url): url is string => !!url).slice(0, 4);
 
@@ -73,13 +152,16 @@ function OutfitCard({ outfit, onDelete }: OutfitCardProps) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <p
-          className="rounded-lg border border-[#e8ddd5] bg-[#FAF7F5] p-3 text-center text-xs text-[#6F625B]"
-          role="note"
-          aria-label="Feature temporarily unavailable"
+        <Button
+          type="button"
+          size="sm"
+          className="w-full rounded-full bg-[#9c6b54] text-white hover:bg-[#7d5643]"
+          onClick={() => onView(outfit)}
+          aria-label={`View outfit ${outfit.name ?? "Untitled outfit"}`}
         >
-          Outfit details and editing are temporarily unavailable.
-        </p>
+          <Eye className="mr-2 h-4 w-4" aria-hidden="true" />
+          View Outfit
+        </Button>
         <Button
           type="button"
           variant="ghost"
@@ -335,7 +417,7 @@ function FavoritesPrerequisitePanel({
       <div className={cn(customerTheme.card, "w-full max-w-md p-6")}>
         <div className="mb-4 flex items-start gap-3">
           <AlertCircle
-            className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500"
+            className="mt-0.5 h-5 w-5 shrink-0 text-amber-500"
             aria-hidden="true"
           />
           <div>
@@ -483,6 +565,8 @@ export function CustomerOutfitsPage() {
   const [preservedForm, setPreservedForm] = useState<CreateFormValues | undefined>();
   const [pendingFavoriteIds, setPendingFavoriteIds] = useState<string[] | null>(null);
 
+  const [viewingOutfit, setViewingOutfit] = useState<OutfitSummary | null>(null);
+
   const [pendingDelete, setPendingDelete] = useState<OutfitSummary | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
@@ -571,6 +655,14 @@ export function CustomerOutfitsPage() {
 
   return (
     <>
+      {/* Outfit detail modal */}
+      {viewingOutfit && (
+        <OutfitDetailModal
+          outfit={viewingOutfit}
+          onClose={() => setViewingOutfit(null)}
+        />
+      )}
+
       {/* Create form modal */}
       {showCreateForm && (
         <CreateOutfitForm
@@ -686,7 +778,7 @@ export function CustomerOutfitsPage() {
             >
               {outfits.map((outfit) => (
                 <div key={outfit.id} role="listitem">
-                  <OutfitCard outfit={outfit} onDelete={handleDeleteClick} />
+                  <OutfitCard outfit={outfit} onDelete={handleDeleteClick} onView={setViewingOutfit} />
                 </div>
               ))}
             </div>
