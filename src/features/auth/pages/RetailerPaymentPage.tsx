@@ -26,7 +26,7 @@ const paymentSchema = z.object({
   ccv: z.string().regex(/^\d{3,4}$/, "Invalid CCV"),
   expiryDate: z
     .string()
-    .regex(/^(0[1-9]|1[0-2])\/?([0-9]{2})$/, "MM/YY format required"),
+    .regex(/^(0[1-9]|1[0-2])\/([0-9]{4})$/, "MM/YYYY format required (e.g. 12/2027)"),
   saveDetails: z.boolean().optional(),
   enableRecurring: z.boolean().optional(),
   balanceThreshold: z.string().optional(),
@@ -94,8 +94,14 @@ export default function RetailerPaymentPage() {
       if (!retailerId)
         throw new Error("User session not found. Please log in again.");
 
+      const firstDigit = values.cardNumber[0];
+      const firstTwo = parseInt(values.cardNumber.slice(0, 2), 10);
+      let providerType = "Visa";
+      if (firstDigit === "5" && firstTwo >= 51 && firstTwo <= 55) providerType = "Mastercard";
+      else if (firstDigit === "3") providerType = "Stripe";
+
       const paymentMethodResponse = await addPaymentMethod({
-        providerType: "Credit Card", // Note: ideally detect provider from card number (Visa, MC, etc)
+        providerType,
         cardholderName: values.cardName,
         cardNumberLast4: values.cardNumber.slice(-4),
         expiryDate: values.expiryDate,
@@ -271,8 +277,8 @@ export default function RetailerPaymentPage() {
                 </label>
                 <input
                   type="text"
-                  maxLength={5}
-                  placeholder="10/25"
+                  maxLength={7}
+                  placeholder="MM/YYYY"
                   {...form.register("expiryDate")}
                   className={`${inputClass} ${form.formState.errors.expiryDate ? "border-red-400" : ""}`}
                 />
