@@ -43,21 +43,27 @@ export class WardrobeCollectionApiError extends Error {
 
 function normalizeCollectionItem(raw: unknown): WardrobeCollectionItem | null {
   if (!isRecord(raw)) return null;
-  const id = typeof raw.id === "string" ? raw.id : "";
-  const productId = typeof raw.productId === "string" ? raw.productId : "";
-  if (!id || !productId) return null;
+  const productId =
+    typeof raw.productId === "string" ? raw.productId :
+    typeof raw.ProductId === "string" ? raw.ProductId : "";
+  if (!productId) return null;
+  // Some backends omit a separate item UUID — fall back to productId as key
+  const id =
+    typeof raw.id === "string" && raw.id ? raw.id :
+    typeof raw.itemId === "string" && raw.itemId ? raw.itemId :
+    productId;
   return {
     id,
     collectionId: typeof raw.collectionId === "string" ? raw.collectionId : null,
     productId,
-    productName: typeof raw.productName === "string" ? raw.productName : null,
+    productName:
+      typeof raw.productName === "string" ? raw.productName :
+      typeof raw.name === "string" ? raw.name : null,
     // Swagger uses productImageUrl; normalise either field name
     primaryImageUrl:
-      typeof raw.productImageUrl === "string"
-        ? raw.productImageUrl
-        : typeof raw.primaryImageUrl === "string"
-          ? raw.primaryImageUrl
-          : null,
+      typeof raw.productImageUrl === "string" ? raw.productImageUrl :
+      typeof raw.primaryImageUrl === "string" ? raw.primaryImageUrl :
+      typeof raw.imageUrl === "string" ? raw.imageUrl : null,
     price: typeof raw.price === "number" ? raw.price : null,
     addedAt: typeof raw.addedAt === "string" ? raw.addedAt : null,
   };
@@ -136,6 +142,22 @@ function normalizePagedCollectionItems(payload: unknown): WardrobeCollectionItem
   }
   if (isRecord(inner) && "data" in inner) {
     inner = inner.data;
+  }
+
+  // Direct array (same pattern as list collections runtime behaviour)
+  if (Array.isArray(inner)) {
+    const items = inner
+      .map(normalizeCollectionItem)
+      .filter((item): item is WardrobeCollectionItem => item !== null);
+    return {
+      items,
+      pageNumber: 1,
+      pageSize: items.length,
+      totalCount: items.length,
+      totalPages: items.length > 0 ? 1 : 0,
+      hasPreviousPage: false,
+      hasNextPage: false,
+    };
   }
 
   if (isRecord(inner) && "items" in inner && Array.isArray(inner.items)) {
