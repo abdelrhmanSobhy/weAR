@@ -197,6 +197,7 @@ export function AddressForm({
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     onSubmit({
+      label: String(data.get("label") || "Home"),
       fullName: String(data.get("fullName") || ""),
       phoneNumber: String(data.get("phoneNumber") || ""),
       line1: String(data.get("line1") || ""),
@@ -212,6 +213,18 @@ export function AddressForm({
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+      <Field id="label" label="Label">
+        <select
+          id="label"
+          name="label"
+          defaultValue={initial?.label ?? "Home"}
+          className={cn(inputCls, "cursor-pointer")}
+        >
+          <option value="Home">Home</option>
+          <option value="Work">Work</option>
+          <option value="Other">Other</option>
+        </select>
+      </Field>
       <Field id="fullName" label="Full name">
         <Input id="fullName" name="fullName" required defaultValue={initial?.fullName ?? ""} className={inputCls} />
       </Field>

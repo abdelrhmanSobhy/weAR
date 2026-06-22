@@ -35,6 +35,7 @@ export interface DeleteCustomerAccountPayload {
 
 export interface CustomerAddress {
   id: string;
+  label?: string | null;
   fullName: string;
   phoneNumber: string;
   line1: string;

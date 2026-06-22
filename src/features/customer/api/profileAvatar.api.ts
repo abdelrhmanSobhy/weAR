@@ -2,7 +2,7 @@ import axios from "axios";
 import { apiClient } from "@/lib/axios";
 import { unwrapCustomerApiData } from "@/features/customer/api/customerApiUtils";
 import { buildAvatarImageExtractionFormData, normalizeNullableMeasurements } from "@/features/customer/types/profileAvatar";
-import type { BodyMeasurements, ChangeCustomerPasswordPayload, CustomerAccountProfile, CustomerAddress, CustomerAddressPayload, CustomerAvatar, DeleteCustomerAccountPayload, ExtractAvatarFromImageInput, MeasurementHistoryEntry, RepairAvatarSourceImageInput, SizeRecommendation, UpdateCustomerProfilePayload } from "@/features/customer/types/profileAvatar";
+import type { BodyMeasurements, ChangeCustomerPasswordPayload, CustomerAccountProfile, CustomerAddress, CustomerAddressPayload, CustomerAddressType, CustomerAvatar, DeleteCustomerAccountPayload, ExtractAvatarFromImageInput, MeasurementHistoryEntry, RepairAvatarSourceImageInput, SizeRecommendation, UpdateCustomerProfilePayload } from "@/features/customer/types/profileAvatar";
 
 export const profileApi = {
   getProfile: async (signal?: AbortSignal) => {
@@ -23,22 +23,67 @@ export const profileApi = {
   },
 };
 
+// Maps frontend camelCase fields to backend PascalCase field names
+function toAddressBody(payload: CustomerAddressPayload): Record<string, unknown> {
+  return {
+    label: payload.label ?? "Home",
+    fullName: payload.fullName,
+    phoneNumber: payload.phoneNumber,
+    addressLine1: payload.line1,
+    addressLine2: payload.line2 ?? null,
+    city: payload.city,
+    state: payload.state ?? null,
+    postalCode: payload.postalCode,
+    country: payload.country,
+    type: payload.type ?? "shipping",
+    isDefault: payload.isDefault ?? false,
+  };
+}
+
+// Normalizes backend response field names back to frontend shape
+function normalizeAddress(raw: Record<string, unknown>): CustomerAddress {
+  return {
+    id: String(raw.id ?? ""),
+    label: typeof raw.label === "string" ? raw.label : null,
+    fullName: String(raw.fullName ?? raw.recipientName ?? ""),
+    phoneNumber: String(raw.phoneNumber ?? ""),
+    line1: String(raw.addressLine1 ?? raw.line1 ?? ""),
+    line2: typeof raw.addressLine2 === "string" ? raw.addressLine2
+      : typeof raw.line2 === "string" ? raw.line2 : null,
+    city: String(raw.city ?? ""),
+    state: typeof raw.state === "string" ? raw.state : null,
+    postalCode: String(raw.postalCode ?? ""),
+    country: String(raw.country ?? ""),
+    type: (raw.type as CustomerAddressType) ?? "shipping",
+    isDefault: Boolean(raw.isDefault),
+  };
+}
+
+function normalizeAddressList(data: unknown): CustomerAddress[] {
+  if (Array.isArray(data)) return data.map((item) => normalizeAddress(item as Record<string, unknown>));
+  return [];
+}
+
 export const addressesApi = {
   list: async (signal?: AbortSignal) => {
     const response = await apiClient.get("/api/customer/addresses", { signal });
-    return unwrapCustomerApiData<CustomerAddress[]>(response.data);
+    const data = unwrapCustomerApiData<unknown>(response.data);
+    return normalizeAddressList(data);
   },
   create: async (payload: CustomerAddressPayload) => {
-    const response = await apiClient.post("/api/customer/addresses", payload);
-    return unwrapCustomerApiData<CustomerAddress>(response.data);
+    const response = await apiClient.post("/api/customer/addresses", toAddressBody(payload));
+    const data = unwrapCustomerApiData<Record<string, unknown>>(response.data);
+    return normalizeAddress(data);
   },
   get: async (id: string, signal?: AbortSignal) => {
     const response = await apiClient.get(`/api/customer/addresses/${id}`, { signal });
-    return unwrapCustomerApiData<CustomerAddress>(response.data);
+    const data = unwrapCustomerApiData<Record<string, unknown>>(response.data);
+    return normalizeAddress(data);
   },
   update: async (id: string, payload: CustomerAddressPayload) => {
-    const response = await apiClient.put(`/api/customer/addresses/${id}`, payload);
-    return unwrapCustomerApiData<CustomerAddress>(response.data);
+    const response = await apiClient.put(`/api/customer/addresses/${id}`, toAddressBody(payload));
+    const data = unwrapCustomerApiData<Record<string, unknown>>(response.data);
+    return normalizeAddress(data);
   },
   delete: async (id: string) => {
     const response = await apiClient.delete(`/api/customer/addresses/${id}`);
@@ -46,7 +91,8 @@ export const addressesApi = {
   },
   setDefault: async (id: string) => {
     const response = await apiClient.patch(`/api/customer/addresses/${id}/default`);
-    return unwrapCustomerApiData<CustomerAddress>(response.data);
+    const data = unwrapCustomerApiData<Record<string, unknown>>(response.data);
+    return normalizeAddress(data);
   },
 };
 
