@@ -59,11 +59,21 @@ export const useToggleCustomerFavorite = () => {
         customerCatalogKeys.productDetail(productId),
       );
 
+      // Find the product from any cached source so we can optimistically add it
+      let productToAdd: CustomerProduct | undefined = previousProductDetail;
+      if (!productToAdd) {
+        for (const [, data] of previousProductLists) {
+          const found = data?.items?.find((p) => p.id === productId);
+          if (found) { productToAdd = found; break; }
+        }
+      }
+
       queryClient.setQueryData<CustomerProduct[]>(favoritesKey, (current) => {
-        if (!current) return current;
-        const existing = current.find((product) => product.id === productId);
-        if (existing) return current.filter((product) => product.id !== productId);
-        return current;
+        const list = current ?? [];
+        const existing = list.find((product) => product.id === productId);
+        if (existing) return list.filter((product) => product.id !== productId);
+        if (!productToAdd) return list;
+        return [...list, { ...productToAdd, isFavorite: true }];
       });
 
       queryClient.setQueriesData<{ items: CustomerProduct[] }>(

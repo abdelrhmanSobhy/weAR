@@ -2,12 +2,16 @@ import { Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ProductGrid } from "@/features/customer/components/product";
-import { useCustomerFavorites } from "@/features/customer/queries/favorites.queries";
+import {
+  useCustomerFavorites,
+  useToggleCustomerFavorite,
+} from "@/features/customer/queries/favorites.queries";
 import { CUSTOMER_ROUTES } from "@/features/customer/routes/customerRoutes";
 import { customerTheme } from "@/features/customer/styles/customerTheme";
 
 export function CustomerFavoritesPage() {
   const favorites = useCustomerFavorites();
+  const toggleFavorite = useToggleCustomerFavorite();
   const products = favorites.data ?? [];
 
   if (favorites.isLoading) {
@@ -85,7 +89,10 @@ export function CustomerFavoritesPage() {
         </Button>
       </div>
 
-      <ProductGrid products={products} />
+      <ProductGrid
+        products={products}
+        onToggleFavorite={(id) => toggleFavorite.mutate(id)}
+      />
     </section>
   );
 }
