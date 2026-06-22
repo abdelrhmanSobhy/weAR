@@ -11,6 +11,7 @@ export default function RetailerSignupStep2Page() {
   const navigate = useNavigate();
   const location = useLocation();
   const loginAction = useAuthStore((state) => state.login);
+  const setNewRegistration = useAuthStore((state) => state.setNewRegistration);
 
   const tempToken = location.state?.tempToken;
 
@@ -55,6 +56,7 @@ export default function RetailerSignupStep2Page() {
           response.data.data;
 
         loginAction(retailerProfile, { accessToken, refreshToken }, "retailer");
+        setNewRegistration(true);
 
         navigate("/signup/retailer/pricing");
       } else {

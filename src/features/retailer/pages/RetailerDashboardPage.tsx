@@ -209,7 +209,7 @@ const downloadBlob = (blob: Blob, filename: string) => {
 };
 
 export function RetailerDashboardPage() {
-  const { user } = useAuthStore();
+  const { user, isNewRegistration } = useAuthStore();
   const retailerId = user?.id ?? "";
   const displayName = user?.fullName || user?.brandName || "Mohamed";
 
@@ -237,23 +237,25 @@ export function RetailerDashboardPage() {
   const kpisRaw = kpisQuery.data?.data;
   const conversionRaw = conversionQuery.data?.data;
 
+  const withFallback = !isNewRegistration;
+
   const kpis = {
-    totalRevenue: kpisRaw?.totalRevenue || fallbackKpis.totalRevenue,
-    totalOrders: kpisRaw?.totalOrders || fallbackKpis.totalOrders,
-    totalTryOns: kpisRaw?.totalTryOns || fallbackKpis.totalTryOns,
-    totalReturns: kpisRaw?.totalReturns || fallbackKpis.totalReturns,
-    totalProfit: kpisRaw?.totalProfit || fallbackKpis.totalProfit,
+    totalRevenue: (withFallback && !kpisRaw?.totalRevenue) ? fallbackKpis.totalRevenue : (kpisRaw?.totalRevenue ?? 0),
+    totalOrders: (withFallback && !kpisRaw?.totalOrders) ? fallbackKpis.totalOrders : (kpisRaw?.totalOrders ?? 0),
+    totalTryOns: (withFallback && !kpisRaw?.totalTryOns) ? fallbackKpis.totalTryOns : (kpisRaw?.totalTryOns ?? 0),
+    totalReturns: (withFallback && !kpisRaw?.totalReturns) ? fallbackKpis.totalReturns : (kpisRaw?.totalReturns ?? 0),
+    totalProfit: (withFallback && !kpisRaw?.totalProfit) ? fallbackKpis.totalProfit : (kpisRaw?.totalProfit ?? 0),
   };
   const conversion = {
-    totalSessions: conversionRaw?.totalSessions || fallbackConversionStats.totalSessions,
-    conversionRatePercentage: conversionRaw?.conversionRatePercentage || fallbackConversionStats.conversionRatePercentage,
+    totalSessions: (withFallback && !conversionRaw?.totalSessions) ? fallbackConversionStats.totalSessions : (conversionRaw?.totalSessions ?? 0),
+    conversionRatePercentage: (withFallback && !conversionRaw?.conversionRatePercentage) ? fallbackConversionStats.conversionRatePercentage : (conversionRaw?.conversionRatePercentage ?? 0),
   };
 
   const revenueData = useMemo(() => {
     const revenuePoints = revenueQuery.data?.data ?? [];
     const profitPoints = profitQuery.data?.data ?? [];
 
-    if (!revenuePoints.length) return fallbackRevenueData;
+    if (!revenuePoints.length) return withFallback ? fallbackRevenueData : [];
 
     return revenuePoints.map((point, index) => {
       const profitValue = profitPoints[index]?.value ?? 0;
@@ -263,35 +265,36 @@ export function RetailerDashboardPage() {
         expenses: Math.max(point.value - profitValue, 0),
       };
     });
-  }, [profitQuery.data?.data, revenueQuery.data?.data]);
+  }, [profitQuery.data?.data, revenueQuery.data?.data, withFallback]);
 
   const profitData = useMemo(() => {
     const points = profitQuery.data?.data ?? [];
 
-    if (!points.length) return fallbackProfitData;
+    if (!points.length) return withFallback ? fallbackProfitData : [];
 
     return points.map((point) => ({
       name: point.label,
       val1: point.value,
       val2: 0,
     }));
-  }, [profitQuery.data?.data]);
+  }, [profitQuery.data?.data, withFallback]);
 
   const sessionsData = useMemo(() => {
     const points = sessionsQuery.data?.data ?? [];
 
-    if (!points.length) return fallbackSessionsData;
+    if (!points.length) return withFallback ? fallbackSessionsData : [];
 
     return points.map((point) => ({
       day: point.label,
       users: point.value,
     }));
-  }, [sessionsQuery.data?.data]);
+  }, [sessionsQuery.data?.data, withFallback]);
 
   const activityData = useMemo(() => {
     const events = activityQuery.data?.data ?? [];
 
     if (!events.length) {
+      if (!withFallback) return [];
       return [
         {
           t: "15 min ago",
@@ -321,46 +324,46 @@ export function RetailerDashboardPage() {
       desc: event.eventData || event.eventType,
       bg: index % 2 === 0 ? "bg-[#FDFCFB]" : "bg-white",
     }));
-  }, [activityQuery.data?.data]);
+  }, [activityQuery.data?.data, withFallback]);
 
   const returnAnalysisData = useMemo(() => {
     const colors = ["#A3B19B", "#D6C5B3", "#E8D8CC", "#8C7765", "#DDDDDD"];
     const reasons = returnReasonsQuery.data?.data ?? [];
 
-    if (!reasons.length) return fallbackReturnAnalysisData;
+    if (!reasons.length) return withFallback ? fallbackReturnAnalysisData : [];
 
     return reasons.map((item, index) => ({
       name: item.reason,
       value: item.count,
       color: colors[index % colors.length],
     }));
-  }, [returnReasonsQuery.data?.data]);
+  }, [returnReasonsQuery.data?.data, withFallback]);
 
   const sizeDistributionData = useMemo(() => {
     const sizes = sizeDistributionQuery.data?.data ?? [];
 
-    if (!sizes.length) return fallbackSizeDistributionData;
+    if (!sizes.length) return withFallback ? fallbackSizeDistributionData : [];
 
     return sizes.map((item) => ({
       size: item.size,
       value: item.count,
     }));
-  }, [sizeDistributionQuery.data?.data]);
+  }, [sizeDistributionQuery.data?.data, withFallback]);
 
   const highestReturnData = useMemo(() => {
     const products = returnRateQuery.data?.data ?? [];
 
-    if (!products.length) return fallbackHighestReturnData;
+    if (!products.length) return withFallback ? fallbackHighestReturnData : [];
 
     return products.slice(0, 6).map((product) => ({
       name: product.productName,
       val1: product.returnRatePercentage,
       val2: Math.max(100 - product.returnRatePercentage, 0),
     }));
-  }, [returnRateQuery.data?.data]);
+  }, [returnRateQuery.data?.data, withFallback]);
 
   const conversionRateData = useMemo(() => {
-    if (!conversionRaw) return fallbackConversionRateData;
+    if (!conversionRaw) return withFallback ? fallbackConversionRateData : [];
 
     return [
       {
@@ -373,14 +376,14 @@ export function RetailerDashboardPage() {
   const triedOnData = useMemo(() => {
     const points = engagementQuery.data?.data ?? [];
 
-    if (!points.length) return fallbackTriedOnData;
+    if (!points.length) return withFallback ? fallbackTriedOnData : [];
 
     return points.slice(0, 4).map((point) => ({
       name: point.label,
       try: point.sessionCount,
       conv: Math.round(point.avgDurationSeconds),
     }));
-  }, [engagementQuery.data?.data]);
+  }, [engagementQuery.data?.data, withFallback]);
 
   const handleExportDashboard = () => {
     if (!retailerId || exportDashboardCsv.isPending) return;

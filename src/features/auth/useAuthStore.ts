@@ -27,6 +27,7 @@ export type AuthState = {
   isAuthenticated: boolean;
   accessToken: string | null;
   refreshToken: string | null;
+  isNewRegistration: boolean;
 
   hasHydrated: boolean;
   setHasHydrated: (v: boolean) => void;
@@ -34,6 +35,7 @@ export type AuthState = {
   login: (profile: RetailerProfile, tokens: { accessToken: string; refreshToken: string }, role: UserRole) => void;
   updateUser: (payload: Partial<RetailerProfile>) => void;
   logout: () => void;
+  setNewRegistration: (v: boolean) => void;
 };
 
 const STORAGE_KEY = "wear-auth";
@@ -46,6 +48,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       accessToken: null,
       refreshToken: null,
+      isNewRegistration: false,
 
       hasHydrated: false,
       setHasHydrated: (v) => set({ hasHydrated: v }),
@@ -57,6 +60,7 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
+          isNewRegistration: false,
         });
       },
 
@@ -73,8 +77,11 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           accessToken: null,
           refreshToken: null,
+          isNewRegistration: false,
         });
       },
+
+      setNewRegistration: (v) => set({ isNewRegistration: v }),
     }),
     {
       name: STORAGE_KEY,
