@@ -115,6 +115,19 @@ const fallbackConversionRateData = [
   { day: "25", rate: 3 },
 ];
 
+const fallbackKpis = {
+  totalRevenue: 248600,
+  totalOrders: 1342,
+  totalTryOns: 8730,
+  totalReturns: 214,
+  totalProfit: 91200,
+};
+
+const fallbackConversionStats = {
+  totalSessions: 24580,
+  conversionRatePercentage: 5.46,
+};
+
 const fallbackTriedOnData = [
   { name: "Denim", try: 58, conv: 40 },
   { name: "Wide Leg", try: 70, conv: 50 },
@@ -221,8 +234,20 @@ export function RetailerDashboardPage() {
   const engagementQuery = useDashboardEngagement(retailerId, chartParams);
   const exportDashboardCsv = useExportDashboardCsv(retailerId);
 
-  const kpis = kpisQuery.data?.data;
-  const conversion = conversionQuery.data?.data;
+  const kpisRaw = kpisQuery.data?.data;
+  const conversionRaw = conversionQuery.data?.data;
+
+  const kpis = {
+    totalRevenue: kpisRaw?.totalRevenue || fallbackKpis.totalRevenue,
+    totalOrders: kpisRaw?.totalOrders || fallbackKpis.totalOrders,
+    totalTryOns: kpisRaw?.totalTryOns || fallbackKpis.totalTryOns,
+    totalReturns: kpisRaw?.totalReturns || fallbackKpis.totalReturns,
+    totalProfit: kpisRaw?.totalProfit || fallbackKpis.totalProfit,
+  };
+  const conversion = {
+    totalSessions: conversionRaw?.totalSessions || fallbackConversionStats.totalSessions,
+    conversionRatePercentage: conversionRaw?.conversionRatePercentage || fallbackConversionStats.conversionRatePercentage,
+  };
 
   const revenueData = useMemo(() => {
     const revenuePoints = revenueQuery.data?.data ?? [];
@@ -335,7 +360,7 @@ export function RetailerDashboardPage() {
   }, [returnRateQuery.data?.data]);
 
   const conversionRateData = useMemo(() => {
-    if (!conversion) return fallbackConversionRateData;
+    if (!conversionRaw) return fallbackConversionRateData;
 
     return [
       {
@@ -343,7 +368,7 @@ export function RetailerDashboardPage() {
         rate: conversion.conversionRatePercentage,
       },
     ];
-  }, [conversion]);
+  }, [conversion, conversionRaw]);
 
   const triedOnData = useMemo(() => {
     const points = engagementQuery.data?.data ?? [];
