@@ -36,25 +36,23 @@ describe("avatar measurement and photo helpers", () => {
     expect(normalizeNullableMeasurements({ heightCm: 170, bodyShape: "Pear" })).toMatchObject({ neckCm: null, bodyShape: "Pear" });
   });
 
-  it("requires height and builds two-image FormData fields without headers", () => {
+  it("requires height and builds single-image FormData fields without headers", () => {
     const frontImageFile = fileOfSize("image/png", 10);
-    const sideImageFile = fileOfSize("image/jpeg", 12);
-    expect(() => buildAvatarImageExtractionFormData({ frontImageFile, sideImageFile, heightCm: 0 })).toThrow(/Height/);
-    expect(() => buildAvatarImageExtractionFormData({ frontImageFile, sideImageFile, heightCm: 301 })).toThrow(/Height/);
-    const formData = buildAvatarImageExtractionFormData({ frontImageFile, sideImageFile, heightCm: 177 });
+    expect(() => buildAvatarImageExtractionFormData({ frontImageFile, heightCm: 0 })).toThrow(/Height/);
+    expect(() => buildAvatarImageExtractionFormData({ frontImageFile, heightCm: 301 })).toThrow(/Height/);
+    const formData = buildAvatarImageExtractionFormData({ frontImageFile, heightCm: 177 });
     expect(formData.get("frontImageFile")).toBe(frontImageFile);
-    expect(formData.get("sideImageFile")).toBe(sideImageFile);
+    expect(formData.get("sideImageFile")).toBeNull();
     expect(formData.get("heightCm")).toBe("177");
     expect(formData.get("ImageFile")).toBeNull();
   });
 
-  it("rejects wrong-type or empty front/side images in the two-image FormData builder", () => {
+  it("rejects wrong-type or empty front image in the FormData builder", () => {
     const good = fileOfSize("image/png", 10);
     const wrongType = fileOfSize("image/webp", 10);
     const empty = fileOfSize("image/png", 0);
-    expect(() => buildAvatarImageExtractionFormData({ frontImageFile: wrongType, sideImageFile: good, heightCm: 177 })).toThrow(/JPEG or PNG/);
-    expect(() => buildAvatarImageExtractionFormData({ frontImageFile: good, sideImageFile: wrongType, heightCm: 177 })).toThrow(/JPEG or PNG/);
-    expect(() => buildAvatarImageExtractionFormData({ frontImageFile: empty, sideImageFile: good, heightCm: 177 })).toThrow(/must not be empty/);
-    expect(() => buildAvatarImageExtractionFormData({ frontImageFile: good, sideImageFile: empty, heightCm: 177 })).toThrow(/must not be empty/);
+    expect(() => buildAvatarImageExtractionFormData({ frontImageFile: wrongType, heightCm: 177 })).toThrow(/JPEG or PNG/);
+    expect(() => buildAvatarImageExtractionFormData({ frontImageFile: empty, heightCm: 177 })).toThrow(/must not be empty/);
+    expect(buildAvatarImageExtractionFormData({ frontImageFile: good, heightCm: 177 })).toBeInstanceOf(FormData);
   });
 });

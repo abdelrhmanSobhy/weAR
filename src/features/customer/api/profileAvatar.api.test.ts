@@ -172,7 +172,6 @@ describe("profile, addresses and avatar API adapters", () => {
 
   it("normalizes flat extraction responses and leaves multipart boundary generation to the browser", async () => {
     const frontFile = new File(["avatar-front"], "front.png", { type: "image/png" });
-    const sideFile = new File(["avatar-side"], "side.jpg", { type: "image/jpeg" });
     mockedApiClient.post.mockResolvedValueOnce({
       data: {
         data: {
@@ -184,7 +183,7 @@ describe("profile, addresses and avatar API adapters", () => {
       },
     });
 
-    await expect(avatarApi.extractFromImage("c1", { frontImageFile: frontFile, sideImageFile: sideFile, heightCm: 168 })).resolves.toMatchObject({
+    await expect(avatarApi.extractFromImage("c1", { frontImageFile: frontFile, heightCm: 168 })).resolves.toMatchObject({
       id: "extracted-1",
       avatar3dModelUrl: "https://cdn.example.test/avatar.glb",
       measurements: {
@@ -200,7 +199,7 @@ describe("profile, addresses and avatar API adapters", () => {
     );
     const sentFormData = mockedApiClient.post.mock.calls[0][1] as FormData;
     expect(sentFormData.get("frontImageFile")).toBe(frontFile);
-    expect(sentFormData.get("sideImageFile")).toBe(sideFile);
+    expect(sentFormData.get("sideImageFile")).toBeNull();
     expect(sentFormData.get("ImageFile")).toBeNull();
     expect(sentFormData.get("heightCm")).toBe("168");
   });

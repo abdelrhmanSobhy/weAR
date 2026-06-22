@@ -95,7 +95,7 @@ describe("Command 07 customer pages", () => {
     expect(screen.getByRole("button", { name: "Update measurements" })).toBeInTheDocument();
   });
 
-  it("validates photo type, requires both images, and surfaces null-model extraction", async () => {
+  it("validates photo type, requires front image and height, and surfaces null-model extraction", async () => {
     const calls: unknown[] = [];
     hooks.useExtractCustomerAvatarFromImage.mockReturnValue({ mutate: (payload: unknown, opts: { onSuccess: (data: unknown) => void }) => { calls.push(payload); opts.onSuccess({ id: "av1", customerId: "c1", avatar3dModelUrl: null, measurements: { heightCm: 177 } }); }, isPending: false, isError: false });
     renderPage(<CustomerAvatarPhotoPage />, "/customer/avatar/photo");
@@ -103,25 +103,21 @@ describe("Command 07 customer pages", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/JPEG or PNG/);
     fireEvent.change(screen.getByLabelText("Front full-body image"), { target: { files: [new File(["x"], "front.png", { type: "image/png" })] } });
     fireEvent.change(screen.getByLabelText("Height in centimeters"), { target: { value: "177" } });
-    // With only the front image, the submit button stays disabled.
-    expect(screen.getByRole("button", { name: "Extract measurements" })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Side full-body image"), { target: { files: [new File(["x"], "side.jpg", { type: "image/jpeg" })] } });
     expect(screen.getByRole("button", { name: "Extract measurements" })).not.toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Extract measurements" }));
-    expect(calls[0]).toMatchObject({ frontImageFile: expect.any(File), sideImageFile: expect.any(File), heightCm: 177 });
+    expect(calls[0]).toMatchObject({ frontImageFile: expect.any(File), heightCm: 177 });
+    expect((calls[0] as Record<string, unknown>).sideImageFile).toBeUndefined();
     await waitFor(() => expect(screen.getByText(/no 3D avatar model was returned/)).toBeInTheDocument());
   });
 
-  it("displays backend FrontImageFile/SideImageFile validation errors", () => {
-    const axiosError = { isAxiosError: true, response: { status: 400, data: { errors: { FrontImageFile: ["The FrontImageFile field is required."], SideImageFile: ["The SideImageFile field is required."] } } } };
+  it("displays backend FrontImageFile validation errors", () => {
+    const axiosError = { isAxiosError: true, response: { status: 400, data: { errors: { FrontImageFile: ["The FrontImageFile field is required."] } } } };
     hooks.useExtractCustomerAvatarFromImage.mockReturnValue({ mutate: (_payload: unknown, opts: { onError: (e: unknown) => void }) => opts.onError(axiosError), isPending: false, isError: true });
     renderPage(<CustomerAvatarPhotoPage />, "/customer/avatar/photo");
     fireEvent.change(screen.getByLabelText("Front full-body image"), { target: { files: [new File(["x"], "front.png", { type: "image/png" })] } });
-    fireEvent.change(screen.getByLabelText("Side full-body image"), { target: { files: [new File(["x"], "side.jpg", { type: "image/jpeg" })] } });
     fireEvent.change(screen.getByLabelText("Height in centimeters"), { target: { value: "177" } });
     fireEvent.click(screen.getByRole("button", { name: "Extract measurements" }));
     expect(screen.getByText(/The FrontImageFile field is required/)).toBeInTheDocument();
-    expect(screen.getByText(/The SideImageFile field is required/)).toBeInTheDocument();
   });
 
   it("shows the photo-avatar info note on the manual page for 3D try-on", () => {
@@ -135,7 +131,6 @@ describe("Command 07 customer pages", () => {
     hooks.useExtractCustomerAvatarFromImage.mockReturnValue({ mutate: (_payload: unknown, opts: { onError: (e: unknown) => void }) => opts.onError(axiosError), isPending: false, isError: true });
     renderPage(<CustomerAvatarPhotoPage />, "/customer/avatar/photo");
     fireEvent.change(screen.getByLabelText("Front full-body image"), { target: { files: [new File(["x"], "front.png", { type: "image/png" })] } });
-    fireEvent.change(screen.getByLabelText("Side full-body image"), { target: { files: [new File(["x"], "side.jpg", { type: "image/jpeg" })] } });
     fireEvent.change(screen.getByLabelText("Height in centimeters"), { target: { value: "177" } });
     fireEvent.click(screen.getByRole("button", { name: "Extract measurements" }));
     expect(screen.getByRole("alert")).toHaveTextContent(/AI could not detect a full body/);

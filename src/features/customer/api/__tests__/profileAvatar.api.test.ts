@@ -27,21 +27,19 @@ beforeEach(() => {
 describe("buildAvatarImageExtractionFormData", () => {
   const makeFile = (name: string) => new File(["data"], name, { type: "image/jpeg" });
 
-  it("uses camelCase backend field names (frontImageFile / sideImageFile / heightCm)", () => {
+  it("uses camelCase backend field names (frontImageFile / heightCm) — no sideImageFile", () => {
     const fd = buildAvatarImageExtractionFormData({
       frontImageFile: makeFile("front.jpg"),
-      sideImageFile: makeFile("side.jpg"),
       heightCm: 175,
     });
     expect(fd.get("frontImageFile")).toBeInstanceOf(File);
-    expect(fd.get("sideImageFile")).toBeInstanceOf(File);
+    expect(fd.get("sideImageFile")).toBeNull();
     expect(fd.get("heightCm")).toBe("175");
   });
 
   it("does not contain PascalCase legacy keys", () => {
     const fd = buildAvatarImageExtractionFormData({
       frontImageFile: makeFile("front.jpg"),
-      sideImageFile: makeFile("side.jpg"),
       heightCm: 175,
     });
     expect(fd.get("FrontImageFile")).toBeNull();
@@ -52,7 +50,6 @@ describe("buildAvatarImageExtractionFormData", () => {
   it("returns a FormData instance, not JSON", () => {
     const fd = buildAvatarImageExtractionFormData({
       frontImageFile: makeFile("front.jpg"),
-      sideImageFile: makeFile("side.jpg"),
       heightCm: 170,
     });
     expect(fd).toBeInstanceOf(FormData);
@@ -157,8 +154,7 @@ describe("avatarApi normalization", () => {
       },
     });
     const frontFile = new File(["data"], "front.jpg", { type: "image/jpeg" });
-    const sideFile = new File(["data"], "side.jpg", { type: "image/jpeg" });
-    await avatarApi.extractFromImage("c1", { frontImageFile: frontFile, sideImageFile: sideFile, heightCm: 175 });
+    await avatarApi.extractFromImage("c1", { frontImageFile: frontFile, heightCm: 175 });
     const [url, body, opts] = mockPost.mock.calls[0] as [string, unknown, unknown];
     expect(url).toBe("/api/customers/c1/avatar/extract-from-image");
     expect(body).toBeInstanceOf(FormData);
