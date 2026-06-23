@@ -33,6 +33,8 @@ import { RetailerInventoryPage } from "@/features/retailer/pages/RetailerInvento
 import { CustomerOnboardingPage } from "@/features/customer/pages/CustomerOnboardingPage";
 import { CustomerLoginPage } from "@/features/customer/pages/CustomerLoginPage";
 import { CustomerSignupPage } from "@/features/customer/pages/CustomerSignupPage";
+import { CustomerCartPage } from "@/features/customer/pages/CustomerCartPage";
+import { CustomerCheckoutPage } from "@/features/customer/pages/CustomerCheckoutPage";
 
 import { ComingSoonPage } from "@/features/common/pages/ComingSoonPage";
 
@@ -94,6 +96,22 @@ const router = createBrowserRouter([
         element: (
           <RequireRole role="customer">
             <ComingSoonPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: "/customer/cart",
+        element: (
+          <RequireRole role="customer">
+            <CustomerCartPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: "/customer/checkout",
+        element: (
+          <RequireRole role="customer">
+            <CustomerCheckoutPage />
           </RequireRole>
         ),
       },
