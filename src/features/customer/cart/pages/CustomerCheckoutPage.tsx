@@ -14,6 +14,7 @@ import { computeSubtotal, computeItemCount } from "@/features/customer/cart/type
 import { useAuthStore } from "@/features/auth/useAuthStore";
 import { useCustomerAddresses } from "@/features/customer/queries/profileAvatar.queries";
 import { useCheckout, useCreatePaymentIntent, useConfirmPayment } from "@/features/customer/queries/orders.queries";
+import { customerCartApi } from "@/features/customer/api/customerCart.api";
 import type { CustomerAddress } from "@/features/customer/types/profileAvatar";
 
 const paymentSchema = z.object({
@@ -44,6 +45,8 @@ export function CustomerCheckoutPage() {
 
   const [step, setStep] = useState<Step>("address");
   const [apiError, setApiError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [placedTotal, setPlacedTotal] = useState(0);
   const [placedAddress, setPlacedAddress] = useState<CustomerAddress | null>(null);
 
@@ -59,9 +62,21 @@ export function CustomerCheckoutPage() {
     defaultValues: { cardName: "", cardNumber: "", ccv: "", expiryDate: "" },
   });
 
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = async () => {
     if (!selectedAddress) return;
-    setStep("payment");
+    setSyncError(null);
+    setSyncing(true);
+    try {
+      await customerCartApi.clearCart(customerId);
+      for (const item of items) {
+        await customerCartApi.addItem(customerId, item.productId, item.quantity);
+      }
+      setStep("payment");
+    } catch {
+      setSyncError("Failed to sync cart. Please try again.");
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const handlePayment = async (values: PaymentFormValues) => {
@@ -402,14 +417,26 @@ export function CustomerCheckoutPage() {
           </dl>
 
           {step === "address" && (
-            <Button
-              type="button"
-              className={cn("w-full rounded-full bg-[#9c6b54] text-white hover:bg-[#7d5643]", customerTheme.focusRing)}
-              disabled={!selectedAddress && addresses.length > 0}
-              onClick={handleProceedToPayment}
-            >
-              Continue to Payment
-            </Button>
+            <>
+              {syncError && (
+                <p className="text-sm text-red-500">{syncError}</p>
+              )}
+              <Button
+                type="button"
+                className={cn("w-full rounded-full bg-[#9c6b54] text-white hover:bg-[#7d5643]", customerTheme.focusRing)}
+                disabled={((!selectedAddress && addresses.length > 0) || syncing)}
+                onClick={handleProceedToPayment}
+              >
+                {syncing ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Preparing…
+                  </span>
+                ) : (
+                  "Continue to Payment"
+                )}
+              </Button>
+            </>
           )}
 
           {(step === "payment" || step === "processing") && (
