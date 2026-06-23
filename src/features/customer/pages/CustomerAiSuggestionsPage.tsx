@@ -32,11 +32,11 @@ function classifyProduct(product: CustomerProduct): ProductSlot | null {
     .join(" ")
     .toLowerCase();
 
-  if (/\b(dress|gown|jumpsuit|romper|playsuit|maxi|midi|mini)\b/.test(text)) return "dress";
-  if (/\b(jacket|blazer|coat|cardigan|hoodie|outerwear)\b/.test(text)) return "outerwear";
-  if (/\b(top|blouse|shirt|tee|t-shirt|sweater|pullover|crop|cami|tank)\b/.test(text)) return "top";
-  if (/\b(pant|jean|trouser|skirt|shorts|legging|culotte)\b/.test(text)) return "bottom";
-  if (/\b(shoe|sneaker|heel|sandal|boot|loafer|flat|pump|stiletto|mule|wedge)\b/.test(text)) return "shoes";
+  if (/\b(dress|gown|jumpsuit|romper|playsuit|maxi|midi|mini)/.test(text)) return "dress";
+  if (/\b(jacket|blazer|coat|cardigan|hoodie|outerwear)/.test(text)) return "outerwear";
+  if (/\b(top|blouse|shirt|tee|sweater|pullover|crop|cami|tank)/.test(text)) return "top";
+  if (/\b(bottom|pant|jean|trouser|skirt|short|legging|culotte)/.test(text)) return "bottom";
+  if (/\b(shoe|sneaker|heel|sandal|boot|loafer|pump|stiletto|mule|wedge)/.test(text)) return "shoes";
   return null;
 }
 
