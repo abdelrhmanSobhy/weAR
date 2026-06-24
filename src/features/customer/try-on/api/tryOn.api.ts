@@ -16,10 +16,11 @@ type TryOnResultResponse = {
   resultImageUrl?: string | null;
   resultModelUrl?: string | null;
   recommendedSize?: string | null;
-  sizeRecommendation?: string | null;
   confidenceScore?: number | null;
   durationSeconds?: number | null;
   traceId?: string | null;
+  isCached?: boolean | null;
+  sessionId?: string | null;
 };
 
 type TryOnSessionsPage = Partial<PaginatedCustomerResponse<TryOnSessionResponse>>;
@@ -34,7 +35,8 @@ const normalizeTryOnSession = (session: TryOnSessionResponse): TryOnSession => (
   sessionType: session.sessionType,
   status: session.status ?? null,
   resultImageUrl: session.resultImageUrl ?? null,
-  recommendedSize: session.recommendedSize ?? session.sizeRecommendation ?? null,
+  resultModelUrl: session.resultModelUrl ?? null,
+  recommendedSize: session.recommendedSize ?? null,
   confidenceScore: session.confidenceScore ?? null,
   durationSeconds: session.durationSeconds ?? null,
   createdAt: session.createdAt ?? null,
@@ -47,7 +49,7 @@ const normalizeCreatedTryOn = (
   payload: CreateTryOnSessionPayload,
   result: TryOnResultResponse,
 ): TryOnSession => ({
-  id: createClientSessionId(payload.productId),
+  id: result.sessionId ?? createClientSessionId(payload.productId),
   productId: payload.productId,
   avatarId: payload.avatarId ?? null,
   sessionType: payload.sessionType,
@@ -55,7 +57,8 @@ const normalizeCreatedTryOn = (
   resultType: result.resultType ?? null,
   resultImageUrl: result.resultImageUrl ?? null,
   resultModelUrl: result.resultModelUrl ?? null,
-  recommendedSize: result.recommendedSize ?? result.sizeRecommendation ?? null,
+  isCached: result.isCached ?? null,
+  recommendedSize: result.recommendedSize ?? null,
   traceId: result.traceId ?? null,
   confidenceScore: result.confidenceScore ?? null,
   durationSeconds: result.durationSeconds ?? null,
